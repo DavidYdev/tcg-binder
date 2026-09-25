@@ -14,26 +14,59 @@
 const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 
+/* ---------- idioma de la interfaz (los textos, en textos.js) ----------
+   Se guarda aparte de la colección: es una preferencia de este navegador,
+   no de tus cartas, así que ni viaja en las copias ni se pierde al borrar.
+   La primera vez manda el idioma del navegador; si no es uno de los
+   nuestros, inglés. */
+const LANG_KEY = 'ptcg_lang';
+let LANG = (() => {
+  try { const l = localStorage.getItem(LANG_KEY); if (TEXTOS[l]) return l; } catch (e) {}
+  const pref = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''])
+    .map(l => String(l).slice(0, 2).toLowerCase())
+    .filter(l => TEXTOS[l])[0];
+  return pref || 'en';
+})();
+function t(k) {
+  let v = TEXTOS[LANG][k];
+  if (v === undefined) v = TEXTOS.es[k];
+  if (v === undefined) return k;
+  return typeof v === 'function' ? v.apply(null, Array.prototype.slice.call(arguments, 1)) : v;
+}
+
 const TCG = 'https://api.tcgdex.net/v2';
 const PKM = 'https://api.pokemontcg.io/v2';
 const PKM_EOL = '2027-03-01';
 const KEY = 'ptcg_col_v3';
 
-const CATS  = { es: 'Español', en: 'English', ja: '日本語 (japonés)' };
+/* Las claves son fijas; las etiquetas salen de TEXTOS según el idioma. */
+const CATS  = ['es', 'en', 'ja'];
 const IDIOMA_DE_CAT = { es: 'ES', en: 'EN', ja: 'JP' };
 const CONDS = { M:'Mint (M)', NM:'Near Mint (NM)', EX:'Excellent (EX)', GD:'Good (GD)', LP:'Light Played (LP)', PL:'Played (PL)', PO:'Poor (PO)' };
-const VARS  = { normal:'Normal', holo:'Holo', reverse:'Reverse Holo', '1st':'1ª Edición', promo:'Promo' };
+const VARS  = ['normal', 'holo', 'reverse', '1st', 'promo'];
 const LANGS = ['ES','EN','FR','DE','IT','PT','JP','KR','ZH','Otro'];
-const MODES = { trend:'Tendencia', avg:'Media de venta', avg30:'Media 30 días', avg7:'Media 7 días', low:'Más bajo' };
+const MODES = ['trend', 'avg', 'avg30', 'avg7', 'low'];
+const catName  = c => t('cats')[c] || c;
+const varName  = v => t('vars')[v] || v;
+const modeName = m => t('modes')[m] || '';
+/* 'Otro' se guarda así en las cartas; solo cambia lo que se enseña. */
+const langName = l => l === 'Otro' ? t('lang.other') : l;
 
 const DEF = {
   v: 3, items: [], wish: [], hist: [],
   cfg: { cat:'es', priceMode:'trend', useCond:1, apiKey:'',
          cond:{ M:1.05, NM:1, EX:0.9, GD:0.75, LP:0.6, PL:0.45, PO:0.3 } }
 };
+/* Colección vacía. El catálogo arranca en el idioma de la interfaz: quien
+   usa la app en inglés busca, casi seguro, cartas inglesas. */
+function nuevo() {
+  const s = JSON.parse(JSON.stringify(DEF));
+  s.cfg.cat = LANG === 'en' ? 'en' : 'es';
+  return s;
+}
 
 /* ---------- utilidades ---------- */
-const eur = n => new Intl.NumberFormat('es-ES', { style:'currency', currency:'EUR' }).format(Number(n) || 0);
+const eur = n => new Intl.NumberFormat(t('locale'), { style:'currency', currency:'EUR' }).format(Number(n) || 0);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const uid = () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -43,16 +76,16 @@ function haceCuanto(iso) {
   const ms = Date.now() - new Date(iso).getTime();
   if (isNaN(ms)) return '—';
   const min = Math.round(ms / 60000);
-  if (min < 1) return 'ahora mismo';
-  if (min < 60) return 'hace ' + plu(min, 'minuto', 'minutos');
+  if (min < 1) return t('ago.now');
+  if (min < 60) return t('ago.min', min);
   const h = Math.round(min / 60);
-  if (h < 24) return 'hace ' + plu(h, 'hora', 'horas');
-  return 'hace ' + plu(Math.round(h / 24), 'día', 'días');
+  if (h < 24) return t('ago.h', h);
+  return t('ago.d', Math.round(h / 24));
 }
 const fmtDate = d => {
   if (!d) return '—';
   const s = String(d).replace(/\//g, '-').slice(0, 10).split('-');
-  return s.length === 3 ? s[2] + '/' + s[1] + '/' + s[0] : String(d);
+  return s.length === 3 ? t('date', s[0], s[1], s[2]) : String(d);
 };
 const imgUrl = (base, q) => {
   if (!base) return '';
@@ -68,7 +101,7 @@ const imgUrl = (base, q) => {
    en CM_CODIGO. Si no tenemos ni código ni número, buscamos por el nombre
    occidental (グラードン -> Groudon). */
 const cmSearchUrl = c => {
-  const url = t => 'https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=' + encodeURIComponent(t);
+  const url = txt => 'https://www.cardmarket.com/' + t('cm.lang') + '/Pokemon/Products/Search?searchString=' + encodeURIComponent(txt);
   if (typeof c === 'string') return url(c);
   if (!c) return url('');
   if (c.setId && c.number && !c.manual) {
@@ -96,8 +129,8 @@ function migrate(s) {
      al formato neutro "pr" para que convivan las dos fuentes. */
   const MODEMAP = { trendPrice:'trend', averageSellPrice:'avg', avg30:'avg30', avg7:'avg7', lowPrice:'low', lowPriceExPlus:'low' };
   if (MODEMAP[s.cfg.priceMode]) s.cfg.priceMode = MODEMAP[s.cfg.priceMode];
-  if (!MODES[s.cfg.priceMode]) s.cfg.priceMode = 'trend';
-  if (!CATS[s.cfg.cat]) s.cfg.cat = 'es';
+  if (MODES.indexOf(s.cfg.priceMode) < 0) s.cfg.priceMode = 'trend';
+  if (CATS.indexOf(s.cfg.cat) < 0) s.cfg.cat = 'es';
   const vistos = {};
   s.items.concat(s.wish).forEach(it => {
     if (!it.pr && it.cm) it.pr = prFromPkm(it.cm, it.cmUp);
@@ -117,10 +150,10 @@ function migrate(s) {
   return s;
 }
 function load() {
-  if (!storageOK) return JSON.parse(JSON.stringify(DEF));
+  if (!storageOK) return nuevo();
   let raw = null;
   try { raw = localStorage.getItem(KEY) || localStorage.getItem('ptcg_col_v2'); } catch (e) {}
-  if (!raw) return JSON.parse(JSON.stringify(DEF));
+  if (!raw) return nuevo();
   try {
     const o = JSON.parse(raw);
     const s = JSON.parse(JSON.stringify(DEF));
@@ -129,12 +162,12 @@ function load() {
     s.hist  = Array.isArray(o.hist)  ? o.hist  : [];
     if (o.cfg) { Object.assign(s.cfg, o.cfg); Object.assign(s.cfg.cond, o.cfg.cond || {}); }
     return migrate(s);
-  } catch (e) { return JSON.parse(JSON.stringify(DEF)); }
+  } catch (e) { return nuevo(); }
 }
 function save() {
   if (!storageOK) return;
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
-  catch (e) { toast('No se pudo guardar: almacenamiento lleno. Exporta una copia.', 'err'); }
+  catch (e) { toast(t('err.full'), 'err'); }
 }
 
 /* ---------- precios: formato neutro para las dos fuentes ---------- */
@@ -198,13 +231,13 @@ async function getJSON(url, tries, headers) {
     try {
       const r = await fetch(url, { headers: headers || {} });
       if (r.status === 404) return null;
-      if (r.status === 429) { last = new Error('Demasiadas consultas seguidas. Espera un minuto.'); await sleep(1500 * (i + 1)); continue; }
-      if (r.status >= 500) { last = new Error('El servidor está ocupado (' + r.status + ')'); await sleep(600 * (i + 1)); continue; }
-      if (!r.ok) throw new Error('Error ' + r.status);
+      if (r.status === 429) { last = new Error(t('err.429')); await sleep(1500 * (i + 1)); continue; }
+      if (r.status >= 500) { last = new Error(t('err.busy', r.status)); await sleep(600 * (i + 1)); continue; }
+      if (!r.ok) throw new Error(t('err.http', r.status));
       return await r.json();
     } catch (e) { last = e; await sleep(500 * (i + 1)); }
   }
-  throw last || new Error('Sin conexión');
+  throw last || new Error(t('err.offline'));
 }
 const tcg = (path, tries) => getJSON(TCG + path, tries || 3);
 const pkm = (path) => getJSON(PKM + path, 5, S.cfg.apiKey ? { 'X-Api-Key': S.cfg.apiKey } : {});
@@ -259,8 +292,8 @@ function fillSetSelects() {
     '<optgroup label="' + esc(serieLabel(g)) + '">' +
     grouped[g].map(s => '<option value="' + esc(s.id) + '">' + esc(setLabel(s)) + '</option>').join('') +
     '</optgroup>').join('');
-  [['#qSet', '<option value="">Cualquier expansión</option>'],
-   ['#sSet', '<option value="">— Elige una expansión —</option>']].forEach(p => {
+  [['#qSet', '<option value="">' + t('search.anySet') + '</option>'],
+   ['#sSet', '<option value="">' + t('sets.pick') + '</option>']].forEach(p => {
     const el = $(p[0]); if (!el) return;
     const prev = el.value;
     el.innerHTML = p[1] + opts;
@@ -268,16 +301,17 @@ function fillSetSelects() {
   });
 }
 function fillCatSelects() {
-  const opts = Object.keys(CATS).map(k =>
-    '<option value="' + k + '"' + (k === S.cfg.cat ? ' selected' : '') + '>' + esc(CATS[k]) + '</option>').join('');
+  const opts = CATS.map(k =>
+    '<option value="' + k + '"' + (k === S.cfg.cat ? ' selected' : '') + '>' + esc(catName(k)) + '</option>').join('');
   ['#qCat', '#sCat'].forEach(sel => { const el = $(sel); if (el) el.innerHTML = opts; });
 }
+const vacio = (icono, html) => '<div class="empty"><div class="big">' + icono + '</div>' + html + '</div>';
 function setCat(cat) {
-  if (!CATS[cat]) return;
+  if (CATS.indexOf(cat) < 0) return;
   S.cfg.cat = cat; save();
   fillCatSelects(); fillSetSelects();
   setCards = [];
-  $('#setOut').innerHTML = '<div class="empty"><div class="big">🗂️</div>Elige una expansión y pulsa <b>Cargar expansión</b>.</div>';
+  $('#setOut').innerHTML = vacio('🗂️', t('sets.start'));
   $('#setProgress').innerHTML = '';
 }
 
@@ -289,8 +323,8 @@ const normLatin = s => String(s || '').toLowerCase().normalize('NFD').replace(/[
 const tieneLatin = s => /[a-zA-Z]/.test(String(s || ''));
 
 function aJapones(texto) {
-  const t = JA_DESDE_LATIN[normLatin(texto)];
-  return t || '';
+  const ja = JA_DESDE_LATIN[normLatin(texto)];
+  return ja || '';
 }
 /* El nombre del Pokémon puede venir con adornos delante y detrás:
    メガスターミーex = メガ (Mega) + スターミー (Starmie) + ex. Buscamos dentro
@@ -373,12 +407,12 @@ function cardHTML(c, opts) {
   let price = opts.priceText;
   if (price == null) {
     const p = basePrice(c.pr, c.variant);
-    price = p ? eur(p) + ' <small>/ud</small>' : '<small style="color:var(--tx3)">sin precio</small>';
+    price = p ? eur(p) + ' <small>' + t('unit') + '</small>' : '<small style="color:var(--tx3)">' + t('no.price') + '</small>';
   }
   return '<div class="card' + (opts.owned ? ' own' : '') + '">' +
     '<div class="imgbox">' + img +
       (opts.qty ? '<span class="qbadge">×' + opts.qty + '</span>' : '') +
-      (opts.variant ? '<span class="vbadge v-' + esc(opts.variant) + '">' + esc(VARS[opts.variant] || opts.variant) + '</span>' : '') +
+      (opts.variant ? '<span class="vbadge v-' + esc(opts.variant) + '">' + esc(varName(opts.variant)) + '</span>' : '') +
     '</div>' +
     '<div class="body">' +
       '<div class="nm">' + esc(c.name) + '</div>' +
@@ -404,21 +438,21 @@ function fillFilters() {
   S.items.forEach(i => { if (i.setName) sets[i.setId || i.setName] = i.setName; if (i.rarity) rars[i.rarity] = 1; if (i.lang) langs[i.lang] = 1; });
   const keep = (sel, val) => { sel.value = val; if (sel.value !== val) sel.value = ''; };
   const s1 = $('#fSet'), v1 = s1.value;
-  s1.innerHTML = '<option value="">Todas las expansiones</option>' + Object.keys(sets).sort((a, b) => sets[a].localeCompare(sets[b])).map(k => '<option value="' + esc(k) + '">' + esc(sets[k]) + '</option>').join('');
+  s1.innerHTML = '<option value="">' + t('col.allSets') + '</option>' + Object.keys(sets).sort((a, b) => sets[a].localeCompare(sets[b])).map(k => '<option value="' + esc(k) + '">' + esc(sets[k]) + '</option>').join('');
   keep(s1, v1);
   const s2 = $('#fRar'), v2 = s2.value;
-  s2.innerHTML = '<option value="">Todas</option>' + Object.keys(rars).sort().map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
+  s2.innerHTML = '<option value="">' + t('all.f') + '</option>' + Object.keys(rars).sort().map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
   keep(s2, v2);
   const s3 = $('#fVar'), v3 = s3.value;
-  s3.innerHTML = '<option value="">Todas</option>' + Object.keys(VARS).map(k => '<option value="' + k + '">' + VARS[k] + '</option>').join('');
+  s3.innerHTML = '<option value="">' + t('all.f') + '</option>' + VARS.map(k => '<option value="' + k + '">' + esc(varName(k)) + '</option>').join('');
   keep(s3, v3);
   const s4 = $('#fLang'), v4 = s4.value;
-  s4.innerHTML = '<option value="">Todos</option>' + Object.keys(langs).sort().map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
+  s4.innerHTML = '<option value="">' + t('all.m') + '</option>' + Object.keys(langs).sort().map(k => '<option value="' + esc(k) + '">' + esc(langName(k)) + '</option>').join('');
   keep(s4, v4);
 }
 
 function filtered() {
-  const t = $('#fText').value.trim().toLowerCase();
+  const txt = $('#fText').value.trim().toLowerCase();
   const set = $('#fSet').value, rar = $('#fRar').value, va = $('#fVar').value, la = $('#fLang').value;
   const pre = $('#fPrice').value;
   const out = S.items.filter(i => {
@@ -429,9 +463,9 @@ function filtered() {
     if (pre === 'sin' && unitPrice(i) > 0) return false;
     if (pre === 'mio' && !(precioManual(i) > 0)) return false;
     if (pre === 'auto' && !tienePrecioAuto(i)) return false;
-    if (t) {
+    if (txt) {
       const hay = (i.name + ' ' + i.setName + ' ' + i.number + ' ' + (i.notes || '') + ' ' + i.rarity + ' ' + i.id).toLowerCase();
-      if (hay.indexOf(t) === -1) return false;
+      if (hay.indexOf(txt) === -1) return false;
     }
     return true;
   });
@@ -455,17 +489,17 @@ function renderCollection() {
   const fechas = all.map(i => (i.pr && i.pr.updated) || '').filter(Boolean).sort();
 
   $('#colTiles').innerHTML = [
-    tile('Cartas en total', String(sumCount(all)), plu(all.length, 'entrada distinta', 'entradas distintas')),
-    tile('Valor estimado', eur(val), 'Referencia: ' + (MODES[S.cfg.priceMode] || '') + ' de Cardmarket'),
-    tile('Invertido', buy ? eur(buy) : '—', buy ? 'Precio de compra anotado' : 'Anota lo que pagaste al añadir'),
-    buy ? tile('Ganancia / pérdida', (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg')
-        : tile('Carta más cara', all.length ? eur(Math.max.apply(null, all.map(unitPrice))) : '—', 'Precio por unidad'),
+    tile(t('col.t.cards'), String(sumCount(all)), t('col.t.distinct', all.length)),
+    tile(t('col.t.value'), eur(val), t('col.t.ref', modeName(S.cfg.priceMode))),
+    tile(t('tile.invested'), buy ? eur(buy) : '—', buy ? t('col.t.bought') : t('col.t.noBuy')),
+    buy ? tile(t('tile.gain'), (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg')
+        : tile(t('col.t.top'), all.length ? eur(Math.max.apply(null, all.map(unitPrice))) : '—', t('col.t.unit')),
     /* Dos fechas distintas que la gente confunde: la de los datos (cuándo
        Cardmarket calculó esos precios) y la de tu última consulta. */
-    tile('Precios de Cardmarket',
-         fechas.length ? fmtDate(fechas[fechas.length - 1]) : 'nunca',
-         (S.lastCheck ? 'Comprobado ' + haceCuanto(S.lastCheck) : 'Pulsa «Actualizar precios»') +
-         (fechas.length > 1 && fechas[0] !== fechas[fechas.length - 1] ? ' · los más viejos, del ' + fmtDate(fechas[0]) : ''))
+    tile(t('col.t.cm'),
+         fechas.length ? fmtDate(fechas[fechas.length - 1]) : t('col.t.never'),
+         (S.lastCheck ? t('col.t.checked', haceCuanto(S.lastCheck)) : t('col.t.press')) +
+         (fechas.length > 1 && fechas[0] !== fechas[fechas.length - 1] ? t('col.t.oldest', fmtDate(fechas[0])) : ''))
   ].join('');
 
   $('#hCount').textContent = sumCount(all);
@@ -473,30 +507,31 @@ function renderCollection() {
 
   const out = $('#colOut');
   if (!all.length) {
-    out.innerHTML = '<div class="empty"><div class="big">📚</div><b>Tu colección está vacía.</b><br>Ve a <b>Buscar y añadir</b> o a <b>Explorar expansiones</b> para registrar tus primeras cartas.</div>';
+    out.innerHTML = vacio('📚', t('col.empty'));
     return;
   }
-  if (!list.length) { out.innerHTML = '<div class="empty"><div class="big">🔎</div>Ningún resultado con esos filtros.</div>'; return; }
+  if (!list.length) { out.innerHTML = vacio('🔎', t('col.noMatch')); return; }
 
-  const head = '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">Mostrando <b style="color:var(--tx)">' + list.length +
-    '</b> de ' + plu(all.length, 'entrada', 'entradas') + ' · ' + plu(sumCount(list), 'carta', 'cartas') +
+  const head = '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">' +
+    t('col.showing', '<b style="color:var(--tx)">' + list.length + '</b>', all.length) + ' · ' + t('n.cards', sumCount(list)) +
     ' · <b style="color:var(--acc)">' + eur(sumValue(list)) + '</b></div>';
 
   if (viewMode === 'grid') {
     out.innerHTML = head + '<div class="grid">' + list.map(i => cardHTML(i, {
       qty: i.qty, variant: i.variant,
-      sub: i.cond + ' · ' + i.lang + (i.manual ? ' · a mano' : ''),
-      priceText: (unitPrice(i) ? eur(unitPrice(i)) + ' <small>/ud · ' + eur(lineTotal(i)) + ' total</small>' : '<small style="color:var(--tx3)">sin precio</small>'),
+      sub: i.cond + ' · ' + langName(i.lang) + (i.manual ? ' · ' + t('manual.short') : ''),
+      priceText: (unitPrice(i) ? eur(unitPrice(i)) + ' <small>' + t('unit') + ' · ' + eur(lineTotal(i)) + ' ' + t('total') + '</small>' : '<small style="color:var(--tx3)">' + t('no.price') + '</small>'),
       /* El atajo a Cardmarket va en todas; resaltado en las que no tienen
          precio, que son las que hay que resolver a mano. */
       actions: '<button class="btn sm" data-edit="' + i.uid + '">✎</button>' +
-        '<a class="btn sm' + (unitPrice(i) ? '' : ' pri') + '" href="' + esc(cmSearchUrl(i)) + '" target="_blank" rel="noopener" title="Ver esta carta en Cardmarket" style="text-decoration:none">€ ↗</a>' +
+        '<a class="btn sm' + (unitPrice(i) ? '' : ' pri') + '" href="' + esc(cmSearchUrl(i)) + '" target="_blank" rel="noopener" title="' + esc(t('col.cmTitle')) + '" style="text-decoration:none">€ ↗</a>' +
         '<button class="btn sm danger" data-del="' + i.uid + '">🗑</button>'
     })).join('') + '</div>';
   } else {
+    const th = t('th');
     out.innerHTML = head + '<div class="tblwrap"><table><thead><tr>' +
-      '<th></th><th>Carta</th><th>Expansión</th><th>Nº</th><th>Rareza</th><th>Var.</th><th>Est.</th><th>Idi.</th>' +
-      '<th class="num">Cant.</th><th class="num">Ud.</th><th class="num">Total</th><th class="num">Compra</th><th>Fuente</th><th></th></tr></thead><tbody>' +
+      '<th></th><th>' + th.card + '</th><th>' + th.set + '</th><th>' + th.num + '</th><th>' + th.rarity + '</th><th>' + th.variant + '</th><th>' + th.cond + '</th><th>' + th.lang + '</th>' +
+      '<th class="num">' + th.qty + '</th><th class="num">' + th.unit + '</th><th class="num">' + th.total + '</th><th class="num">' + th.paid + '</th><th>' + th.src + '</th><th></th></tr></thead><tbody>' +
       list.map(i =>
         '<tr>' +
         '<td>' + (imgUrl(i.img, 'low') ? '<img class="tmini" src="' + esc(imgUrl(i.img, 'low')) + '" loading="lazy" alt="">' : '') + '</td>' +
@@ -504,14 +539,14 @@ function renderCollection() {
         '<td style="color:var(--tx2)">' + esc(i.setName) + '</td>' +
         '<td style="color:var(--tx2)">' + esc(i.number) + '</td>' +
         '<td style="color:var(--tx2)">' + esc(i.rarity) + '</td>' +
-        '<td><span class="chip">' + esc(VARS[i.variant] || i.variant) + '</span></td>' +
+        '<td><span class="chip">' + esc(varName(i.variant)) + '</span></td>' +
         '<td><span class="chip">' + esc(i.cond) + '</span></td>' +
-        '<td style="color:var(--tx2)">' + esc(i.lang) + '</td>' +
+        '<td style="color:var(--tx2)">' + esc(langName(i.lang)) + '</td>' +
         '<td class="num"><b>' + (i.qty || 1) + '</b></td>' +
         '<td class="num">' + eur(unitPrice(i)) + '</td>' +
         '<td class="num"><b style="color:var(--acc)">' + eur(lineTotal(i)) + '</b></td>' +
         '<td class="num" style="color:var(--tx3)">' + (i.buy ? eur(i.buy) : '—') + '</td>' +
-        '<td style="color:var(--tx3);font-size:11px">' + (i.manual ? 'a mano' : (i.pr ? SRC_NAME[i.pr.src] || '' : '—')) + '</td>' +
+        '<td style="color:var(--tx3);font-size:11px">' + (i.manual ? t('manual.short') : (i.pr ? SRC_NAME[i.pr.src] || '' : '—')) + '</td>' +
         '<td style="white-space:nowrap"><button class="btn sm" data-edit="' + i.uid + '">✎</button> <button class="btn sm danger" data-del="' + i.uid + '">🗑</button></td>' +
         '</tr>').join('') +
       '</tbody></table></div>';
@@ -523,9 +558,10 @@ function renderCollection() {
   el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', renderCollection);
 });
 $('#btnClearF').onclick = () => { ['fText','fSet','fRar','fVar','fLang','fPrice'].forEach(id => $('#' + id).value = ''); $('#fSort').value = 'value-desc'; renderCollection(); };
+const etiquetaVista = () => t(viewMode === 'grid' ? 'view.table' : 'view.grid');
 $('#btnViewMode').onclick = () => {
   viewMode = viewMode === 'grid' ? 'table' : 'grid';
-  $('#btnViewMode').innerHTML = viewMode === 'grid' ? '📋 Ver como tabla' : '🖼️ Ver como cuadrícula';
+  $('#btnViewMode').innerHTML = etiquetaVista();
   renderCollection();
 };
 
@@ -534,24 +570,24 @@ document.addEventListener('click', async e => {
   const ed = e.target.closest('[data-edit]');
   if (ed) {
     const it = S.items.find(x => x.uid === ed.dataset.edit);
-    if (it) openModal(it); else toast('No encuentro esa carta. Recarga la página.', 'err');
+    if (it) openModal(it); else toast(t('col.notFound'), 'err');
     return;
   }
 
   const dl = e.target.closest('[data-del]');
   if (dl) {
     const it = S.items.find(x => x.uid === dl.dataset.del);
-    if (!it) { toast('No encuentro esa carta. Recarga la página y vuelve a intentarlo.', 'err'); return; }
-    if (confirm('¿Quitar «' + it.name + '» (' + it.setName + ' ' + it.number + ') de tu colección?')) {
+    if (!it) { toast(t('col.notFoundRetry'), 'err'); return; }
+    if (confirm(t('col.confirmDel', it.name, it.setName + ' ' + it.number))) {
       const antes = S.items.length;
       S.items = S.items.filter(x => x !== it);
       save(); renderCollection();
-      toast(S.items.length < antes ? 'Carta eliminada' : 'No se pudo eliminar', S.items.length < antes ? '' : 'err');
+      toast(S.items.length < antes ? t('col.deleted') : t('col.delFail'), S.items.length < antes ? '' : 'err');
     }
     return;
   }
   const wd = e.target.closest('[data-wdel]');
-  if (wd) { S.wish = S.wish.filter(x => x.uid !== wd.dataset.wdel); save(); renderWish(); toast('Quitada de deseos'); return; }
+  if (wd) { S.wish = S.wish.filter(x => x.uid !== wd.dataset.wdel); save(); renderWish(); toast(t('wish.removed')); return; }
 
   const wm = e.target.closest('[data-wmove]');
   if (wm) {
@@ -579,12 +615,12 @@ async function loadCard(id, cat, btn) {
   if (btn) { btn.innerHTML = '…'; btn.disabled = true; }
   try {
     const d = await tcg('/' + (cat || S.cfg.cat) + '/cards/' + encodeURIComponent(id));
-    if (!d) throw new Error('No se encontró la carta');
+    if (!d) throw new Error(t('card.notFound'));
     const c = normCard(d, cat || S.cfg.cat);
     if (!c.pr) { const fb = await fallbackOne(c); if (fb) c.pr = fb; }
     return c;
   } catch (err) {
-    toast('No se pudo cargar la carta: ' + err.message, 'err');
+    toast(t('card.loadFail', err.message), 'err');
     return null;
   } finally { if (btn) { btn.innerHTML = txt; btn.disabled = false; } }
 }
@@ -607,15 +643,15 @@ async function fallbackOne(c) {
    ============================================================ */
 function campoImagenHTML(id, img) {
   const esFoto = !!(img && img.slice(0, 5) === 'data:');
-  return '<label class="f">Imagen de la carta</label>' +
+  return '<label class="f">' + t('img.label') + '</label>' +
     '<div class="row" style="gap:8px">' +
-      '<button class="btn pri" id="' + id + 'Btn" type="button">📷 Usar mi foto</button>' +
-      '<input class="inp grow" id="' + id + 'Url" placeholder="…o pega el enlace directo a una imagen" value="' + esc(esFoto ? '' : (img || '')) + '">' +
-      (esFoto ? '<button class="btn danger" id="' + id + 'Del" type="button">Quitar foto</button>' : '') +
+      '<button class="btn pri" id="' + id + 'Btn" type="button">' + t('img.useMine') + '</button>' +
+      '<input class="inp grow" id="' + id + 'Url" placeholder="' + esc(t('img.url.ph')) + '" value="' + esc(esFoto ? '' : (img || '')) + '">' +
+      (esFoto ? '<button class="btn danger" id="' + id + 'Del" type="button">' + t('img.remove') + '</button>' : '') +
       '<input type="file" id="' + id + 'File" accept="image/*" hidden>' +
     '</div>' +
     '<div style="font-size:11.5px;color:var(--tx3);margin-top:5px" id="' + id + 'Info">' +
-      (esFoto ? 'Estás usando una foto tuya.' : 'Si la carta no trae foto, hazle una o descárgala y súbela con el botón: se guarda reducida.') +
+      (esFoto ? t('img.mine') : t('img.hint')) +
     '</div>';
 }
 
@@ -628,12 +664,12 @@ function campoImagenWire(id, img, etiquetaGuardar) {
      creyendo que es el de la imagen. Avisamos en vez de fallar callando. */
   const revisar = () => {
     const v = $('#' + id + 'Url').value.trim();
-    if (!v) { info().innerHTML = foto ? 'Estás usando una foto tuya.' : 'Si la carta no trae foto, hazle una o descárgala y súbela con el botón.'; return; }
+    if (!v) { info().innerHTML = foto ? t('img.mine') : t('img.hint'); return; }
     const esPagina = /drive\.google\.com|docs\.google\.com|dropbox\.com\/s\/|photos\.app\.goo\.gl|onedrive\.live\.com|imgur\.com\/(a|gallery)\//i.test(v);
     const pareceImagen = /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(v);
-    if (esPagina) info().innerHTML = '<b style="color:#ff8b7a">Ese enlace es una página, no una imagen.</b> Drive y similares sirven un visor, no el archivo, y suelen pedir permiso. Descarga la foto y usa <b>📷 Usar mi foto</b>.';
-    else if (!pareceImagen) info().innerHTML = 'Ese enlace no parece apuntar a una imagen (suelen acabar en .jpg o .png). Si no se ve, usa <b>📷 Usar mi foto</b>.';
-    else info().innerHTML = 'Enlace con pinta de imagen. Si luego no carga, ese sitio no permite enlazarla: usa <b>📷 Usar mi foto</b>.';
+    if (esPagina) info().innerHTML = t('img.page');
+    else if (!pareceImagen) info().innerHTML = t('img.notImg');
+    else info().innerHTML = t('img.looksImg');
   };
   $('#' + id + 'Url').addEventListener('input', revisar);
 
@@ -642,7 +678,7 @@ function campoImagenWire(id, img, etiquetaGuardar) {
   if (btnQuitar) btnQuitar.onclick = () => {
     foto = null; quitada = true;
     $('#' + id + 'Url').value = '';
-    info().textContent = 'Foto quitada. Al guardar, la carta se queda sin imagen.';
+    info().textContent = t('img.removed');
     btnQuitar.remove();
   };
 
@@ -650,10 +686,10 @@ function campoImagenWire(id, img, etiquetaGuardar) {
     const f = ev.target.files[0]; if (!f) return;
     const kb = Math.round(f.size / 1024);
     const ext = (f.name.split('.').pop() || '').toUpperCase();
-    const ficha = '<br><span style="color:var(--tx3)">Archivo: ' + esc(f.name) + ' · ' + (f.type || 'tipo desconocido') + ' · ' + kb + ' KB</span>';
-    info().textContent = 'Procesando la foto…';
+    const ficha = '<br><span style="color:var(--tx3)">' + t('img.file', esc(f.name), esc(f.type || t('img.unknownType')), kb) + '</span>';
+    info().textContent = t('img.processing');
     const fr = new FileReader();
-    fr.onerror = () => { info().innerHTML = '<b style="color:#ff8b7a">No he podido leer ese archivo.</b>' + ficha; };
+    fr.onerror = () => { info().innerHTML = t('img.readFail') + ficha; };
     fr.onload = () => {
       const im = new Image();
       im.onload = () => {
@@ -664,15 +700,13 @@ function campoImagenWire(id, img, etiquetaGuardar) {
         foto = cv.toDataURL('image/jpeg', 0.72);
         quitada = false;
         $('#' + id + 'Url').value = '';
-        info().innerHTML = '✅ Foto lista (' + Math.round(foto.length / 1024) + ' KB). Se guardará al pulsar <b>' + esc(etiquetaGuardar) + '</b>.';
+        info().innerHTML = t('img.ready', Math.round(foto.length / 1024), esc(etiquetaGuardar));
       };
       im.onerror = () => {
         const heic = /heic|heif/i.test(f.type) || /^(HEIC|HEIF)$/.test(ext);
         const html = /html?$/i.test(ext) || /html/i.test(f.type);
-        info().innerHTML = '<b style="color:#ff8b7a">El navegador no sabe abrir ese archivo.</b> ' +
-          (heic ? 'Es una foto de iPhone en formato HEIC, que Chrome no entiende: ábrela con Fotos de Windows y usa <b>Guardar como</b> → JPG.'
-          : html ? 'Es una página web guardada, no una imagen: lo que descargaste de Drive fue la página, no el archivo. En Drive, pulsa los tres puntos y elige <b>Descargar</b>.'
-          : 'Prueba a abrirlo con Fotos de Windows y guardarlo como JPG o PNG.') + ficha;
+        info().innerHTML = t('img.cantOpen') +
+          (heic ? t('img.heic') : html ? t('img.html') : t('img.other')) + ficha;
       };
       im.src = fr.result;
     };
@@ -703,39 +737,40 @@ function openModal(existing, card) {
   });
   const isEdit = !!existing;
   const opt = (o, sel) => Object.keys(o).map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
-  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(langName(k)) + '</option>').join('');
   const big = imgUrl(base.img, 'high');
+  const etiquetaGuardar = isEdit ? t('m.saveChanges') : t('add');
 
   $('#modalHost').innerHTML =
   '<div class="ovl" id="ovl"><div class="modal">' +
-    '<div class="mhead"><h3>' + (isEdit ? 'Editar carta' : 'Añadir a mi colección') + '</h3><button class="x" id="mX">×</button></div>' +
+    '<div class="mhead"><h3>' + (isEdit ? t('m.edit') : t('m.add')) + '</h3><button class="x" id="mX">×</button></div>' +
     '<div class="mbody">' +
       '<div style="display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap">' +
         (big ? '<img src="' + esc(big) + '" alt="" style="width:130px;border-radius:8px;flex:0 0 auto" onerror="this.style.display=\'none\'">' : '') +
         '<div style="flex:1;min-width:190px">' +
           '<div style="font-size:18px;font-weight:800">' + esc(base.name) + '</div>' +
-          '<div style="color:var(--tx2);font-size:13px;margin-bottom:8px">' + esc(base.setName) + ' · Nº ' + esc(base.number) + ' · ' + esc(base.rarity) + '</div>' +
+          '<div style="color:var(--tx2);font-size:13px;margin-bottom:8px">' + esc(base.setName) + ' · ' + t('num.short') + ' ' + esc(base.number) + ' · ' + esc(base.rarity) + '</div>' +
           priceBoxHTML(base) +
         '</div>' +
       '</div>' +
       '<div class="fgrid">' +
-        '<div><label class="f">Cantidad</label><input class="inp" id="mQty" type="number" min="1" step="1" value="' + (base.qty || 1) + '"></div>' +
-        '<div><label class="f">Variante</label><select class="inp" id="mVar">' + opt(VARS, base.variant) + '</select></div>' +
-        '<div><label class="f">Estado</label><select class="inp" id="mCond">' + opt(CONDS, base.cond) + '</select></div>' +
-        '<div><label class="f">Idioma</label><select class="inp" id="mLang">' + optArr(LANGS, base.lang) + '</select></div>' +
-        '<div><label class="f">Precio que pagaste (€/ud)</label><input class="inp" id="mBuy" type="number" min="0" step="0.01" placeholder="opcional" value="' + esc(base.buy == null ? '' : base.buy) + '"></div>' +
-        '<div><label class="f">Graduación (opcional)</label><input class="inp" id="mGrade" placeholder="PSA 10, CGC 9.5..." value="' + esc(base.grade || '') + '"></div>' +
-        '<div><label class="f">' + (base.manual ? 'Valor estimado (€/ud)' : 'Precio que le pongo yo (€/ud)') + '</label>' +
-          '<input class="inp" id="mMp" type="number" min="0" step="0.01" placeholder="' + (base.manual ? 'lo pones tú' : 'dejar vacío = automático') + '" value="' + esc(base.mp == null ? '' : base.mp) + '"></div>' +
+        '<div><label class="f">' + t('f.qty') + '</label><input class="inp" id="mQty" type="number" min="1" step="1" value="' + (base.qty || 1) + '"></div>' +
+        '<div><label class="f">' + t('f.variant') + '</label><select class="inp" id="mVar">' + opt(t('vars'), base.variant) + '</select></div>' +
+        '<div><label class="f">' + t('f.cond') + '</label><select class="inp" id="mCond">' + opt(CONDS, base.cond) + '</select></div>' +
+        '<div><label class="f">' + t('f.lang') + '</label><select class="inp" id="mLang">' + optArr(LANGS, base.lang) + '</select></div>' +
+        '<div><label class="f">' + t('m.paid') + '</label><input class="inp" id="mBuy" type="number" min="0" step="0.01" placeholder="' + esc(t('optional')) + '" value="' + esc(base.buy == null ? '' : base.buy) + '"></div>' +
+        '<div><label class="f">' + t('m.grade') + '</label><input class="inp" id="mGrade" placeholder="PSA 10, CGC 9.5..." value="' + esc(base.grade || '') + '"></div>' +
+        '<div><label class="f">' + (base.manual ? t('m.estValue') : t('m.myPrice')) + '</label>' +
+          '<input class="inp" id="mMp" type="number" min="0" step="0.01" placeholder="' + esc(base.manual ? t('m.youSet') : t('m.auto.ph')) + '" value="' + esc(base.mp == null ? '' : base.mp) + '"></div>' +
       '</div>' +
-      '<div style="margin-top:12px"><label class="f">Notas</label><input class="inp" id="mNotes" placeholder="Dónde la guardas, con quién la cambiaste..." value="' + esc(base.notes || '') + '"></div>' +
+      '<div style="margin-top:12px"><label class="f">' + t('f.notes') + '</label><input class="inp" id="mNotes" placeholder="' + esc(t('m.notes.ph')) + '" value="' + esc(base.notes || '') + '"></div>' +
       '<div style="margin-top:12px">' + campoImagenHTML('mI', base.img) + '</div>' +
       '<div class="note" id="mPrev"></div>' +
     '</div>' +
     '<div class="mfoot">' +
-      '<a class="btn" href="' + esc(cmSearchUrl(base)) + '" target="_blank" rel="noopener" style="margin-right:auto;text-decoration:none">Buscar en Cardmarket ↗</a>' +
-      '<button class="btn" id="mCancel">Cancelar</button>' +
-      '<button class="btn pri" id="mSave">' + (isEdit ? 'Guardar cambios' : 'Añadir') + '</button>' +
+      '<a class="btn" href="' + esc(cmSearchUrl(base)) + '" target="_blank" rel="noopener" style="margin-right:auto;text-decoration:none">' + t('m.cm') + '</a>' +
+      '<button class="btn" id="mCancel">' + t('cancel') + '</button>' +
+      '<button class="btn pri" id="mSave">' + etiquetaGuardar + '</button>' +
     '</div>' +
   '</div></div>';
 
@@ -748,15 +783,15 @@ function openModal(existing, card) {
     const u = unitPrice(tmp);
     const pm = precioManual(tmp);
     const mandaElTuyo = pm != null && pm > 0;
-    $('#mPrev').innerHTML = '<b>Valor estimado:</b> ' + eur(u) + ' por unidad · <b>' + eur(u * tmp.qty) + '</b> en total' +
+    $('#mPrev').innerHTML = t('m.prev', eur(u), eur(u * tmp.qty)) +
       (base.manual || mandaElTuyo
-        ? ' <span style="color:var(--tx3)">(precio puesto por ti: manda sobre el automático y no se actualiza solo)</span>'
-        : (S.cfg.useCond ? ' <span style="color:var(--tx3)">(incluye el ajuste por estado ×' + (S.cfg.cond[tmp.cond] == null ? 1 : S.cfg.cond[tmp.cond]) + ')</span>' : ''));
+        ? ' <span style="color:var(--tx3)">' + t('m.prevMine') + '</span>'
+        : (S.cfg.useCond ? ' <span style="color:var(--tx3)">' + t('m.prevCond', S.cfg.cond[tmp.cond] == null ? 1 : S.cfg.cond[tmp.cond]) + '</span>' : ''));
   };
   ['mVar','mCond','mQty','mMp'].forEach(id => { const el = $('#' + id); if (el) el.addEventListener('input', upd); });
   upd();
 
-  const imagen = campoImagenWire('mI', base.img, isEdit ? 'Guardar cambios' : 'Añadir');
+  const imagen = campoImagenWire('mI', base.img, etiquetaGuardar);
 
   const close = () => { $('#modalHost').innerHTML = ''; };
   $('#mX').onclick = close; $('#mCancel').onclick = close;
@@ -774,10 +809,10 @@ function openModal(existing, card) {
 
     data.img = imagen.valor();
 
-    if (isEdit) { Object.assign(existing, data); toast('Cambios guardados', 'ok'); }
+    if (isEdit) { Object.assign(existing, data); toast(t('m.saved'), 'ok'); }
     else {
       const dup = S.items.find(x => x.id === base.id && x.variant === data.variant && x.cond === data.cond && x.lang === data.lang && (x.grade || '') === data.grade);
-      if (dup) { dup.qty = (dup.qty || 1) + data.qty; toast('Ya la tenías: ahora tienes ' + dup.qty, 'ok'); }
+      if (dup) { dup.qty = (dup.qty || 1) + data.qty; toast(t('m.dup', dup.qty), 'ok'); }
       else {
         S.items.push(Object.assign({
           uid: uid(), id: base.id, cat: base.cat, name: base.name,
@@ -785,7 +820,7 @@ function openModal(existing, card) {
           number: base.number, rarity: base.rarity, img: base.img, pr: base.pr,
           added: new Date().toISOString()
         }, data));
-        toast('«' + base.name + '» añadida a tu colección', 'ok');
+        toast(t('m.added', base.name), 'ok');
       }
     }
     save(); close(); renderCollection();
@@ -794,16 +829,14 @@ function openModal(existing, card) {
 }
 
 function priceBoxHTML(c) {
-  if (c.manual) return '<div style="background:#0e141c;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">Carta añadida a mano: <b>el valor lo pones tú</b> en el campo de abajo.</div>';
+  if (c.manual) return '<div style="background:#0e141c;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">' + t('pb.manual') + '</div>';
   const p = c.pr;
-  if (!p) return '<div style="background:#2a1f14;border:1px solid #5a4322;border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">' +
-    'Ninguna fuente cotiza esta carta (pasa mucho con las japonesas: existen en Cardmarket, pero el catálogo no las tiene enlazadas).<br>' +
-    'Míralas con <b>Buscar en Cardmarket</b> aquí abajo y escribe el precio en <b>«Precio que le pongo yo»</b>.</div>';
-  const rows = [['Tendencia', p.trend], ['Media de venta', p.avg], ['Más bajo', p.low], ['Media 30 días', p.avg30]];
-  if (p.rtrend > 0) rows.push(['Reverse (tendencia)', p.rtrend]);
+  if (!p) return '<div style="background:#2a1f14;border:1px solid #5a4322;border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">' + t('pb.none') + '</div>';
+  const rows = [[modeName('trend'), p.trend], [modeName('avg'), p.avg], [modeName('low'), p.low], [modeName('avg30'), p.avg30]];
+  if (p.rtrend > 0) rows.push([t('pb.reverse'), p.rtrend]);
   return '<div style="background:#0e141c;border:1px solid var(--line);border-radius:8px;padding:9px 11px">' +
     rows.map(r => '<div class="srow"><span style="color:var(--tx2);font-size:12px">' + r[0] + '</span><b class="num">' + (r[1] > 0 ? eur(r[1]) : '—') + '</b></div>').join('') +
-    '<div style="font-size:11px;color:var(--tx3);margin-top:7px">Cardmarket vía ' + esc(SRC_NAME[p.src] || p.src) + ' · ' + esc(fmtDate(p.updated)) + '</div></div>';
+    '<div style="font-size:11px;color:var(--tx3);margin-top:7px">' + t('pb.via', esc(SRC_NAME[p.src] || p.src), esc(fmtDate(p.updated))) + '</div></div>';
 }
 
 /* ============================================================
@@ -811,44 +844,44 @@ function priceBoxHTML(c) {
    ============================================================ */
 function openManual() {
   const opt = (o, sel) => Object.keys(o).map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
-  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(langName(k)) + '</option>').join('');
 
   $('#modalHost').innerHTML =
   '<div class="ovl" id="ovl"><div class="modal">' +
-    '<div class="mhead"><h3>Añadir una carta a mano</h3><button class="x" id="mX">×</button></div>' +
+    '<div class="mhead"><h3>' + t('x.title') + '</h3><button class="x" id="mX">×</button></div>' +
     '<div class="mbody">' +
-      '<div class="note">Para lo que ninguna fuente tenga catalogado: promos raras, cartas de otros idiomas o expansiones recién salidas. Lo único imprescindible es el nombre.</div>' +
+      '<div class="note">' + t('x.note') + '</div>' +
       '<div class="fgrid">' +
-        '<div><label class="f">Nombre *</label><input class="inp" id="xName" placeholder="Groudon"></div>' +
-        '<div><label class="f">Expansión</label><input class="inp" id="xSet" placeholder="Nombre de la expansión"></div>' +
-        '<div><label class="f">Número</label><input class="inp" id="xNum" placeholder="084/086"></div>' +
-        '<div><label class="f">Rareza</label><input class="inp" id="xRar" placeholder="Art Rare, SR, promo..."></div>' +
-        '<div><label class="f">Cantidad</label><input class="inp" id="xQty" type="number" min="1" step="1" value="1"></div>' +
-        '<div><label class="f">Variante</label><select class="inp" id="xVar">' + opt(VARS, 'normal') + '</select></div>' +
-        '<div><label class="f">Estado</label><select class="inp" id="xCond">' + opt(CONDS, 'NM') + '</select></div>' +
-        '<div><label class="f">Idioma</label><select class="inp" id="xLang">' + optArr(LANGS, IDIOMA_DE_CAT[S.cfg.cat] || 'ES') + '</select></div>' +
-        '<div><label class="f">Valor estimado (€/ud)</label><input class="inp" id="xMp" type="number" min="0" step="0.01" placeholder="lo pones tú"></div>' +
-        '<div><label class="f">Precio que pagaste (€/ud)</label><input class="inp" id="xBuy" type="number" min="0" step="0.01" placeholder="opcional"></div>' +
+        '<div><label class="f">' + t('x.name') + '</label><input class="inp" id="xName" placeholder="Groudon"></div>' +
+        '<div><label class="f">' + t('f.set') + '</label><input class="inp" id="xSet" placeholder="' + esc(t('x.set.ph')) + '"></div>' +
+        '<div><label class="f">' + t('f.number') + '</label><input class="inp" id="xNum" placeholder="084/086"></div>' +
+        '<div><label class="f">' + t('f.rarity') + '</label><input class="inp" id="xRar" placeholder="' + esc(t('x.rar.ph')) + '"></div>' +
+        '<div><label class="f">' + t('f.qty') + '</label><input class="inp" id="xQty" type="number" min="1" step="1" value="1"></div>' +
+        '<div><label class="f">' + t('f.variant') + '</label><select class="inp" id="xVar">' + opt(t('vars'), 'normal') + '</select></div>' +
+        '<div><label class="f">' + t('f.cond') + '</label><select class="inp" id="xCond">' + opt(CONDS, 'NM') + '</select></div>' +
+        '<div><label class="f">' + t('f.lang') + '</label><select class="inp" id="xLang">' + optArr(LANGS, IDIOMA_DE_CAT[S.cfg.cat] || 'ES') + '</select></div>' +
+        '<div><label class="f">' + t('m.estValue') + '</label><input class="inp" id="xMp" type="number" min="0" step="0.01" placeholder="' + esc(t('m.youSet')) + '"></div>' +
+        '<div><label class="f">' + t('m.paid') + '</label><input class="inp" id="xBuy" type="number" min="0" step="0.01" placeholder="' + esc(t('optional')) + '"></div>' +
       '</div>' +
       '<div style="margin-top:12px">' + campoImagenHTML('xI', '') + '</div>' +
-      '<div style="margin-top:12px"><label class="f">Notas</label><input class="inp" id="xNotes" placeholder="Dónde la guardas, de dónde salió..."></div>' +
+      '<div style="margin-top:12px"><label class="f">' + t('f.notes') + '</label><input class="inp" id="xNotes" placeholder="' + esc(t('x.notes.ph')) + '"></div>' +
     '</div>' +
-    '<div class="mfoot"><button class="btn" id="mCancel">Cancelar</button><button class="btn pri" id="mSave">Añadir</button></div>' +
+    '<div class="mfoot"><button class="btn" id="mCancel">' + t('cancel') + '</button><button class="btn pri" id="mSave">' + t('add') + '</button></div>' +
   '</div></div>';
 
   const close = () => { $('#modalHost').innerHTML = ''; };
   $('#mX').onclick = close; $('#mCancel').onclick = close;
   $('#ovl').onclick = e => { if (e.target.id === 'ovl') close(); };
-  const imagen = campoImagenWire('xI', '', 'Añadir');
+  const imagen = campoImagenWire('xI', '', t('add'));
   $('#xName').focus();
 
   $('#mSave').onclick = () => {
     const name = $('#xName').value.trim();
-    if (!name) { toast('Ponle al menos un nombre', 'err'); $('#xName').focus(); return; }
+    if (!name) { toast(t('x.needName'), 'err'); $('#xName').focus(); return; }
     S.items.push({
       uid: uid(), id: 'manual-' + uid(), manual: true, cat: S.cfg.cat,
       name: name,
-      setId: '', setName: $('#xSet').value.trim() || 'Añadidas a mano', series: 'Añadidas a mano',
+      setId: '', setName: $('#xSet').value.trim() || t('manual.set'), series: t('manual.set'),
       number: $('#xNum').value.trim(), rarity: $('#xRar').value.trim() || '—',
       img: imagen.valor(), pr: null,
       qty: Math.max(1, parseInt($('#xQty').value, 10) || 1),
@@ -859,7 +892,7 @@ function openManual() {
       added: new Date().toISOString()
     });
     save(); close(); renderCollection();
-    toast('«' + name + '» añadida a mano', 'ok');
+    toast(t('x.added', name), 'ok');
   };
 }
 $('#btnManual').onclick = openManual;
@@ -943,39 +976,39 @@ function renderSearchResults() {
   }[searchOpts.orden];
   lista = lista.slice().sort(orden);
 
-  const opt = (v, t) => '<option value="' + v + '"' + (searchOpts.orden === v ? ' selected' : '') + '>' + t + '</option>';
+  const opt = (v, label) => '<option value="' + v + '"' + (searchOpts.orden === v ? ' selected' : '') + '>' + label + '</option>';
   const barra =
     '<div class="row" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">' +
-      '<div style="min-width:210px"><label class="f">Ordenar por</label><select class="inp" id="rOrder">' +
-        opt('set-desc', 'Expansión más reciente') +
-        opt('precio-desc', 'Precio: de mayor a menor') +
-        opt('precio-asc', 'Precio: de menor a mayor') +
-        opt('sube', 'Las que más suben (vs. mes)') +
-        opt('baja', 'Las que más bajan (vs. mes)') +
-        opt('set-asc', 'Expansión más antigua') +
-        opt('nombre', 'Nombre (A-Z)') +
-        opt('numero', 'Número de carta') +
+      '<div style="min-width:210px"><label class="f">' + t('f.sort') + '</label><select class="inp" id="rOrder">' +
+        opt('set-desc', t('search.o.newest')) +
+        opt('precio-desc', t('search.o.priceDesc')) +
+        opt('precio-asc', t('search.o.priceAsc')) +
+        opt('sube', t('search.o.up')) +
+        opt('baja', t('search.o.down')) +
+        opt('set-asc', t('search.o.oldest')) +
+        opt('nombre', t('search.o.name')) +
+        opt('numero', t('search.o.number')) +
       '</select></div>' +
-      '<div style="min-width:150px"><label class="f">Rareza</label><select class="inp" id="rRar">' +
-        '<option value="">Todas</option>' +
+      '<div style="min-width:150px"><label class="f">' + t('f.rarity') + '</label><select class="inp" id="rRar">' +
+        '<option value="">' + t('all.f') + '</option>' +
         Object.keys(rarezas).sort().map(r => '<option value="' + esc(r) + '"' + (searchOpts.rareza === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') +
       '</select></div>' +
-      '<div style="min-width:150px"><label class="f">En mi colección</label><select class="inp" id="rOwn">' +
-        '<option value="">Todas</option>' +
-        '<option value="no"' + (searchOpts.tengo === 'no' ? ' selected' : '') + '>Las que me faltan</option>' +
-        '<option value="si"' + (searchOpts.tengo === 'si' ? ' selected' : '') + '>Las que ya tengo</option>' +
+      '<div style="min-width:150px"><label class="f">' + t('search.inCol') + '</label><select class="inp" id="rOwn">' +
+        '<option value="">' + t('all.f') + '</option>' +
+        '<option value="no"' + (searchOpts.tengo === 'no' ? ' selected' : '') + '>' + t('search.missing') + '</option>' +
+        '<option value="si"' + (searchOpts.tengo === 'si' ? ' selected' : '') + '>' + t('search.owned') + '</option>' +
       '</select></div>' +
-      '<div style="min-width:120px"><label class="f">Precio mínimo €</label>' +
-        '<input class="inp" id="rMin" type="number" min="0" step="0.5" placeholder="sin mínimo" value="' + esc(searchOpts.min) + '"></div>' +
-      '<div><button class="btn" id="rClear">Limpiar</button></div>' +
+      '<div style="min-width:120px"><label class="f">' + t('search.min') + '</label>' +
+        '<input class="inp" id="rMin" type="number" min="0" step="0.5" placeholder="' + esc(t('search.min.ph')) + '" value="' + esc(searchOpts.min) + '"></div>' +
+      '<div><button class="btn" id="rClear">' + t('clear') + '</button></div>' +
     '</div>';
 
   const resumen = '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">' +
-    plu(lista.length, 'carta', 'cartas') +
-    (lista.length !== searchCards.length ? ' de ' + searchCards.length + ' encontradas' : '') +
-    (searchMeta.total > searchCards.length ? ' · la búsqueda daba ' + searchMeta.total + ', se han traído las ' + searchCards.length + ' primeras' : '') +
-    ' · catálogo ' + esc(CATS[cat]) +
-    (searchMeta.traducido ? ' · buscado como <b style="color:var(--tx)">' + esc(searchMeta.traducido) + '</b>' : '') +
+    t('n.cards', lista.length) +
+    (lista.length !== searchCards.length ? t('search.of', searchCards.length) : '') +
+    (searchMeta.total > searchCards.length ? t('search.capped', searchMeta.total, searchCards.length) : '') +
+    t('search.catalog', esc(catName(cat))) +
+    (searchMeta.traducido ? t('search.as', '<b style="color:var(--tx)">' + esc(searchMeta.traducido) + '</b>') : '') +
     '</div>';
 
   const muestraVar = searchOpts.orden === 'sube' || searchOpts.orden === 'baja';
@@ -988,19 +1021,19 @@ function renderSearchResults() {
           const tengo = owned[c.id] || 0;
           const v = variacion(c);
           const precio = basePrice(c.pr, 'normal');
-          let txt = precio ? eur(precio) + ' <small>/ud</small>' : '<small style="color:var(--tx3)">sin precio</small>';
+          let txt = precio ? eur(precio) + ' <small>' + t('unit') + '</small>' : '<small style="color:var(--tx3)">' + t('no.price') + '</small>';
           if (muestraVar && v != null) {
             txt += ' <small class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v >= 0 ? '▲' : '▼') + Math.abs(v).toFixed(0) + '%</small>';
           }
           return cardHTML(c, {
             owned: tengo > 0,
-            sub: tengo ? 'Ya tienes ' + plu(tengo, 'copia', 'copias') : '',
+            sub: tengo ? t('search.have', tengo) : '',
             priceText: txt,
-            actions: '<button class="btn sm pri" data-add="' + esc(c.id) + '" data-cat="' + esc(cat) + '">+ Añadir</button>' +
-                     '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(cat) + '" title="A la lista de deseos">⭐</button>'
+            actions: '<button class="btn sm pri" data-add="' + esc(c.id) + '" data-cat="' + esc(cat) + '">' + t('add.btn') + '</button>' +
+                     '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(cat) + '" title="' + esc(t('search.wishTitle')) + '">⭐</button>'
           });
         }).join('') + '</div>'
-      : '<div class="empty"><div class="big">🔎</div>Ninguna carta pasa esos filtros.</div>');
+      : vacio('🔎', t('search.noMatch')));
 
   $('#rOrder').onchange = e => { searchOpts.orden = e.target.value; renderSearchResults(); };
   $('#rRar').onchange   = e => { searchOpts.rareza = e.target.value; renderSearchResults(); };
@@ -1015,10 +1048,10 @@ async function doSearch() {
   const setId = $('#qSet').value;
   const numRaw = $('#qNum').value.trim();
   const cat = S.cfg.cat;
-  if (!name && !setId && !numRaw) { toast('Escribe al menos un nombre, una expansión o un número', 'err'); return; }
+  if (!name && !setId && !numRaw) { toast(t('search.needSome'), 'err'); return; }
 
   const out = $('#searchOut');
-  out.innerHTML = '<div class="empty"><div class="big">⏳</div>Buscando…</div>';
+  out.innerHTML = vacio('⏳', t('search.busy'));
   progress(30);
   lastSearch = { name: name, setId: setId, numRaw: numRaw, cat: cat };
 
@@ -1046,7 +1079,7 @@ async function doSearch() {
       for (let i = 0; i < nums.length && !list.length; i++) list = exactSet((await tcg(build(nums[i]))) || [], setId);
       if (!list.length && (name || setId)) {
         list = exactSet((await tcg(build(''))) || [], setId);
-        if (list.length) aviso = 'Ninguna carta lleva el número <b>' + esc(nums[0]) + '</b> entre esos resultados, así que te muestro todas las demás: localiza la tuya por la imagen.';
+        if (list.length) aviso = t('search.numMiss', esc(nums[0]));
       }
     } else {
       list = exactSet((await tcg(build(''))) || [], setId);
@@ -1054,12 +1087,10 @@ async function doSearch() {
 
     if (!list.length) {
       searchCards = [];
-      out.innerHTML = '<div class="empty"><div class="big">🤷</div>No se han encontrado cartas en el catálogo <b>' + esc(CATS[cat]) + '</b>.<br>' +
+      out.innerHTML = vacio('🤷', t('search.none', esc(catName(cat))) + '<br>' +
         '<span style="font-size:12px">' +
-        (cat === 'ja' && name && tieneLatin(name) && !traducido
-          ? 'En el catálogo japonés los nombres van en japonés y «' + esc(name) + '» no está en el diccionario. Busca por expansión y número, que es lo más fiable.'
-          : 'Prueba con menos palabras, cambia el catálogo de idioma, o añádela a mano.') +
-        '</span></div>';
+        (cat === 'ja' && name && tieneLatin(name) && !traducido ? t('search.noDict', esc(name)) : t('search.tryLess')) +
+        '</span>');
       progress(100); setTimeout(() => progress(0), 400);
       return;
     }
@@ -1072,7 +1103,7 @@ async function doSearch() {
     const slice = list.slice(0, TOPE);
     const cards = [];
     progress(45);
-    out.innerHTML = '<div class="empty"><div class="big">⏳</div>Consultando precios de ' + plu(slice.length, 'carta', 'cartas') + '…</div>';
+    out.innerHTML = vacio('⏳', t('search.pricing', slice.length));
     await pool(slice, async c => {
       try {
         const d = await tcg('/' + cat + '/cards/' + encodeURIComponent(c.id), 2);
@@ -1086,8 +1117,8 @@ async function doSearch() {
     renderSearchResults();
   } catch (e) {
     progress(100);
-    out.innerHTML = '<div class="empty"><div class="big">⚠️</div>' + esc(e.message) +
-      '<br><button class="btn" style="margin-top:12px" id="btnRetry">Reintentar</button></div>';
+    out.innerHTML = vacio('⚠️', esc(e.message) +
+      '<br><button class="btn" style="margin-top:12px" id="btnRetry">' + t('retry') + '</button>');
     const rt = $('#btnRetry'); if (rt) rt.onclick = doSearch;
   }
   setTimeout(() => progress(0), 500);
@@ -1101,22 +1132,22 @@ $('#qCat').onchange = e => { setCat(e.target.value); if (lastSearch) doSearch();
    LISTA DE DESEOS
    ============================================================ */
 function addWish(c) {
-  if (S.wish.some(w => w.id === c.id)) { toast('Ya está en tu lista de deseos'); return; }
+  if (S.wish.some(w => w.id === c.id)) { toast(t('wish.dup')); return; }
   S.wish.push(Object.assign({ uid: uid(), qty:1, variant:'normal', cond:'NM', lang:'ES', added:new Date().toISOString() }, c));
-  save(); toast('«' + c.name + '» añadida a deseos', 'ok'); renderWish();
+  save(); toast(t('wish.added', c.name), 'ok'); renderWish();
 }
 function renderWish() {
   $('#wishTiles').innerHTML = [
-    tile('Cartas deseadas', String(S.wish.length), S.wish.length === 1 ? 'carta pendiente' : 'cartas pendientes'),
-    tile('Coste estimado', eur(sumValue(S.wish)), 'Si las compraras hoy')
+    tile(t('wish.t.count'), String(S.wish.length), t('wish.t.pending', S.wish.length)),
+    tile(t('wish.t.cost'), eur(sumValue(S.wish)), t('wish.t.today'))
   ].join('');
   const out = $('#wishOut');
   if (!S.wish.length) {
-    out.innerHTML = '<div class="empty"><div class="big">⭐</div>Tu lista de deseos está vacía.<br><span style="font-size:12px">Usa el botón ⭐ en los resultados de búsqueda.</span></div>';
+    out.innerHTML = vacio('⭐', t('wish.empty') + '<br><span style="font-size:12px">' + t('wish.empty2') + '</span>');
     return;
   }
   out.innerHTML = '<div class="grid">' + S.wish.map(w => cardHTML(w, {
-    actions: '<button class="btn sm pri" data-wmove="' + w.uid + '">✓ La tengo</button><button class="btn sm danger" data-wdel="' + w.uid + '">🗑</button>'
+    actions: '<button class="btn sm pri" data-wmove="' + w.uid + '">' + t('wish.got') + '</button><button class="btn sm danger" data-wdel="' + w.uid + '">🗑</button>'
   })).join('') + '</div>';
 }
 
@@ -1127,14 +1158,14 @@ let setCards = [];
 async function loadSet() {
   const id = $('#sSet').value;
   const cat = S.cfg.cat;
-  if (!id) { toast('Elige una expansión', 'err'); return; }
+  if (!id) { toast(t('sets.needPick'), 'err'); return; }
   const out = $('#setOut');
-  out.innerHTML = '<div class="empty"><div class="big">⏳</div>Cargando la expansión…</div>';
+  out.innerHTML = vacio('⏳', t('sets.loading'));
   setCards = [];
   progress(40);
   try {
     const s = await tcg('/' + cat + '/sets/' + encodeURIComponent(id));
-    if (!s || !s.cards) throw new Error('Esa expansión no está disponible en este catálogo');
+    if (!s || !s.cards) throw new Error(t('sets.unavailable'));
     setCards = s.cards.map(c => ({
       id: c.id, cat: cat, name: c.name || '', number: c.localId || '',
       setId: id, setName: s.name || '', rarity: '', img: c.image || '', pr: null
@@ -1143,7 +1174,7 @@ async function loadSet() {
     renderSet();
   } catch (e) {
     progress(100);
-    out.innerHTML = '<div class="empty"><div class="big">⚠️</div>' + esc(e.message) + '</div>';
+    out.innerHTML = vacio('⚠️', esc(e.message));
   }
   setTimeout(() => progress(0), 400);
 }
@@ -1154,21 +1185,21 @@ function renderSet() {
   const pct = setCards.length ? Math.round(have / setCards.length * 100) : 0;
   $('#setProgress').innerHTML =
     '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">' +
-    '<b>Tienes ' + have + ' de ' + setCards.length + ' cartas</b><b style="color:var(--acc)">' + pct + '%</b></div>' +
+    '<b>' + t('sets.progress', have, setCards.length) + '</b><b style="color:var(--acc)">' + pct + '%</b></div>' +
     '<div class="bar"><i style="width:' + pct + '%"></i></div>';
 
   const f = $('#sFilter').value;
   const list = setCards.filter(c => f === 'have' ? owned[c.id] : f === 'miss' ? !owned[c.id] : true);
   $('#setOut').innerHTML = list.length
-    ? '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">El precio de cada carta se consulta al añadirla, para no lanzar cientos de peticiones de golpe.</div>' +
+    ? '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">' + t('sets.priceLater') + '</div>' +
       '<div class="grid">' + list.map(c => cardHTML(c, {
         owned: !!owned[c.id], qty: owned[c.id] || 0,
-        sub: owned[c.id] ? 'En tu colección' : '',
-        priceText: '<small style="color:var(--tx3)">al añadir</small>',
-        actions: '<button class="btn sm ' + (owned[c.id] ? '' : 'pri') + '" data-add="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '">+ Añadir</button>' +
-                 (owned[c.id] ? '' : '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '">⭐</button>')
+        sub: owned[c.id] ? t('sets.inCol') : '',
+        priceText: '<small style="color:var(--tx3)">' + t('sets.onAdd') + '</small>',
+        actions: '<button class="btn sm ' + (owned[c.id] ? '' : 'pri') + '" data-add="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '">' + t('add.btn') + '</button>' +
+                 (owned[c.id] ? '' : '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '" title="' + esc(t('search.wishTitle')) + '">⭐</button>')
       })).join('') + '</div>'
-    : '<div class="empty"><div class="big">✅</div>Nada que mostrar con ese filtro.</div>';
+    : vacio('✅', t('sets.nothing'));
 }
 $('#btnLoadSet').onclick = loadSet;
 $('#sFilter').onchange = () => { if (setCards.length) renderSet(); };
@@ -1182,7 +1213,7 @@ $('#sCat').onchange = e => setCat(e.target.value);
 async function updatePrices() {
   const targets = S.items.concat(S.wish).filter(i => !i.manual);
   if (!targets.length) {
-    toast(S.items.length ? 'Solo tienes cartas añadidas a mano: esas las pones tú.' : 'No tienes cartas registradas todavía');
+    toast(S.items.length ? t('upd.onlyManual') : t('upd.noCards'));
     return;
   }
   const btn = $('#btnUpdate');
@@ -1194,7 +1225,7 @@ async function updatePrices() {
 
   let okTcg = 0, sinPrecio = [], fallos = 0;
 
-  btn.textContent = '⟳ Actualizando 0%';
+  btn.textContent = t('upd.progress', 0);
   await pool(claves, async clave => {
     const grupo = byId[clave];
     const ref = grupo[0];
@@ -1212,7 +1243,7 @@ async function updatePrices() {
     } catch (e) { fallos++; }
   }, 6, (done, tot) => {
     const p = (done / tot) * 70;
-    btn.textContent = '⟳ Actualizando ' + Math.round(p) + '%';
+    btn.textContent = t('upd.progress', Math.round(p));
     progress(p);
   });
 
@@ -1223,7 +1254,7 @@ async function updatePrices() {
     const lotes = [];
     for (let i = 0; i < candidatos.length; i += 15) lotes.push(candidatos.slice(i, i + 15));
     for (let n = 0; n < lotes.length; n++) {
-      btn.textContent = '⟳ Respaldo ' + Math.round(70 + (n / lotes.length) * 30) + '%';
+      btn.textContent = t('upd.fallback', Math.round(70 + (n / lotes.length) * 30));
       progress(70 + (n / lotes.length) * 30);
       const mapa = {};
       lotes[n].forEach(i => { mapa[pkmIdOf(i)] = i; });
@@ -1252,7 +1283,7 @@ async function updatePrices() {
 
   save();
   progress(100); setTimeout(() => progress(0), 500);
-  btn.disabled = false; btn.innerHTML = '⟳ Actualizar precios';
+  btn.disabled = false; btn.innerHTML = t('upd.btn');
   renderCollection(); renderWish(); renderStats();
   if (setCards.length) renderSet();
 
@@ -1263,16 +1294,12 @@ async function updatePrices() {
   const hoy = todayISO();
 
   const sinNada = sinPrecio.length - okPkm;
-  let msg = 'Consultadas ' + plu(okTcg + okPkm, 'carta', 'cartas');
-  if (okPkm) msg += ' (' + okPkm + ' vía respaldo)';
+  let msg = t('upd.checked', okTcg + okPkm);
+  if (okPkm) msg += t('upd.viaFb', okPkm);
   msg += ' · ' + eur(total);
-  if (masNueva) {
-    msg += masNueva >= hoy
-      ? ' · precios de hoy'
-      : ' · Cardmarket aún no ha publicado los de hoy: estos son del ' + fmtDate(masNueva);
-  }
-  if (sinNada > 0) msg += ' · ' + plu(sinNada, 'carta sin precio', 'cartas sin precio');
-  if (fallos) msg += ' · ' + plu(fallos, 'fallo de red', 'fallos de red');
+  if (masNueva) msg += masNueva >= hoy ? t('upd.today') : t('upd.notYet', fmtDate(masNueva));
+  if (sinNada > 0) msg += ' · ' + t('upd.noPrice', sinNada);
+  if (fallos) msg += ' · ' + t('upd.netErr', fallos);
   toast(msg, fallos ? 'err' : 'ok');
 }
 $('#btnUpdate').onclick = updatePrices;
@@ -1288,21 +1315,21 @@ function renderStats() {
   all.forEach(i => {
     sets[i.setName || '—'] = (sets[i.setName || '—'] || 0) + lineTotal(i);
     rars[i.rarity || '—'] = (rars[i.rarity || '—'] || 0) + (i.qty || 1);
-    const f = i.manual ? 'Puesto a mano' : (i.pr ? (SRC_NAME[i.pr.src] || i.pr.src) : 'Sin precio');
+    const f = i.manual ? t('st.src.manual') : (i.pr ? (SRC_NAME[i.pr.src] || i.pr.src) : t('st.src.none'));
     fuentes[f] = (fuentes[f] || 0) + (i.qty || 1);
   });
 
   $('#stTiles').innerHTML = [
-    tile('Valor total', eur(val), 'Referencia ' + (MODES[S.cfg.priceMode] || '')),
-    tile('Cartas', String(sumCount(all)), plu(all.length, 'entrada', 'entradas') + ' · ' + plu(Object.keys(sets).length, 'expansión', 'expansiones')),
-    tile('Valor medio por carta', eur(avg), ''),
-    tile('Invertido', buy ? eur(buy) : '—', buy ? 'Sobre las cartas con precio anotado' : 'Sin datos de compra'),
-    buy ? tile('Ganancia / pérdida', (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg') : ''
+    tile(t('st.t.total'), eur(val), t('st.t.ref', modeName(S.cfg.priceMode))),
+    tile(t('st.t.cards'), String(sumCount(all)), t('n.entries', all.length) + ' · ' + t('n.sets', Object.keys(sets).length)),
+    tile(t('st.t.avg'), eur(avg), ''),
+    tile(t('tile.invested'), buy ? eur(buy) : '—', buy ? t('st.t.boughtOn') : t('st.t.noBuy')),
+    buy ? tile(t('tile.gain'), (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg') : ''
   ].join('');
 
   const h = S.hist;
   if (h.length < 2) {
-    $('#stHist').innerHTML = '<div class="empty" style="padding:26px">Necesitas al menos dos actualizaciones de precios en días distintos para ver la evolución.</div>';
+    $('#stHist').innerHTML = '<div class="empty" style="padding:26px">' + t('st.needTwo') + '</div>';
   } else {
     const W = 760, H = 180, pad = 34;
     const vs = h.map(x => x.v), mx = Math.max.apply(null, vs), mn = Math.min.apply(null, vs);
@@ -1314,7 +1341,7 @@ function renderStats() {
     $('#stHist').innerHTML =
       '<div style="margin-bottom:10px"><b style="font-size:20px">' + eur(lastv) + '</b> ' +
       '<span class="' + (chg >= 0 ? 'pos' : 'neg') + '" style="font-weight:700">' + (chg >= 0 ? '+' : '') + eur(chg) +
-      ' (' + (first ? ((chg / first) * 100).toFixed(1) : '0') + '%)</span> <span style="color:var(--tx3);font-size:12px">desde ' + fmtDate(h[0].d) + '</span></div>' +
+      ' (' + (first ? ((chg / first) * 100).toFixed(1) : '0') + '%)</span> <span style="color:var(--tx3);font-size:12px">' + t('st.since', fmtDate(h[0].d)) + '</span></div>' +
       '<div style="overflow-x:auto"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;min-width:420px;height:auto">' +
       '<polyline points="' + pts + '" fill="none" stroke="#ffcb05" stroke-width="2.5" stroke-linejoin="round"/>' +
       h.map((x, i) => '<circle cx="' + px(i) + '" cy="' + py(x.v) + '" r="3" fill="#ffcb05"><title>' + fmtDate(x.d) + ': ' + eur(x.v) + '</title></circle>').join('') +
@@ -1324,24 +1351,26 @@ function renderStats() {
   }
 
   const top = all.slice().sort((a, b) => unitPrice(b) - unitPrice(a)).slice(0, 15);
+  const th = t('th');
   $('#stTop').innerHTML = top.length
-    ? '<div class="tblwrap"><table style="min-width:640px"><thead><tr><th>#</th><th></th><th>Carta</th><th>Expansión</th><th>Var.</th><th class="num">Cant.</th><th class="num">Ud.</th><th class="num">Total</th></tr></thead><tbody>' +
+    ? '<div class="tblwrap"><table style="min-width:640px"><thead><tr><th>#</th><th></th><th>' + th.card + '</th><th>' + th.set + '</th><th>' + th.variant + '</th>' +
+      '<th class="num">' + th.qty + '</th><th class="num">' + th.unit + '</th><th class="num">' + th.total + '</th></tr></thead><tbody>' +
       top.map((i, n) => '<tr><td style="color:var(--tx3)">' + (n + 1) + '</td>' +
         '<td>' + (imgUrl(i.img, 'low') ? '<img class="tmini" src="' + esc(imgUrl(i.img, 'low')) + '" loading="lazy" alt="">' : '') + '</td>' +
         '<td><b>' + esc(i.name) + '</b></td><td style="color:var(--tx2)">' + esc(i.setName) + '</td>' +
-        '<td><span class="chip">' + esc(VARS[i.variant] || i.variant) + '</span></td>' +
+        '<td><span class="chip">' + esc(varName(i.variant)) + '</span></td>' +
         '<td class="num">' + (i.qty || 1) + '</td><td class="num">' + eur(unitPrice(i)) + '</td>' +
         '<td class="num"><b style="color:var(--acc)">' + eur(lineTotal(i)) + '</b></td></tr>').join('') +
       '</tbody></table></div>'
-    : '<div class="empty" style="padding:26px">Sin cartas todavía.</div>';
+    : '<div class="empty" style="padding:26px">' + t('st.noCards') + '</div>';
 
   $('#stSets').innerHTML = barsHTML(sets, v => eur(v));
-  $('#stRar').innerHTML = barsHTML(rars, v => plu(v, 'carta', 'cartas'));
-  $('#stSrc').innerHTML = barsHTML(fuentes, v => plu(v, 'carta', 'cartas'));
+  $('#stRar').innerHTML = barsHTML(rars, v => t('n.cards', v));
+  $('#stSrc').innerHTML = barsHTML(fuentes, v => t('n.cards', v));
 }
 function barsHTML(obj, fmt) {
   const ks = Object.keys(obj).sort((a, b) => obj[b] - obj[a]).slice(0, 18);
-  if (!ks.length) return '<div class="empty" style="padding:26px">Sin datos.</div>';
+  if (!ks.length) return '<div class="empty" style="padding:26px">' + t('st.noData') + '</div>';
   const mx = obj[ks[0]] || 1;
   return ks.map(k =>
     '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px">' +
@@ -1360,18 +1389,21 @@ function download(name, text, type) {
   setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1000);
 }
 $('#btnExportJson').onclick = () => {
-  download('coleccion-pokemon-' + todayISO() + '.json', JSON.stringify(S, null, 2));
-  toast('Copia de seguridad descargada', 'ok');
+  download(t('file.base') + '-' + todayISO() + '.json', JSON.stringify(S, null, 2));
+  toast(t('exp.json'), 'ok');
 };
+/* El Excel español espera punto y coma y coma decimal; el inglés, coma y
+   punto. Si no casan, mete cada fila entera en una sola celda. */
 $('#btnExportCsv').onclick = () => {
-  const head = ['ID','Nombre','Expansion','Numero','Rareza','Variante','Estado','Idioma','Graduacion','Cantidad','PrecioUnidad_EUR','ValorTotal_EUR','PrecioCompra_EUR','Fuente','Actualizado','Notas'];
+  const sep = t('csv.sep');
+  const dec = n => n.toFixed(2).replace('.', t('csv.dec'));
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = S.items.map(i => [i.id, i.name, i.setName, i.number, i.rarity, VARS[i.variant] || i.variant, i.cond, i.lang, i.grade || '',
-    i.qty || 1, unitPrice(i).toFixed(2).replace('.', ','), lineTotal(i).toFixed(2).replace('.', ','),
-    i.buy === '' || i.buy == null ? '' : Number(i.buy).toFixed(2).replace('.', ','),
-    i.manual ? 'a mano' : (i.pr ? SRC_NAME[i.pr.src] || '' : ''), i.pr ? fmtDate(i.pr.updated) : '', i.notes || ''].map(q).join(';'));
-  download('coleccion-pokemon-' + todayISO() + '.csv', '﻿' + head.join(';') + '\n' + rows.join('\n'), 'text/csv;charset=utf-8');
-  toast('CSV descargado (ábrelo con Excel)', 'ok');
+  const rows = S.items.map(i => [i.id, i.name, i.setName, i.number, i.rarity, varName(i.variant), i.cond, langName(i.lang), i.grade || '',
+    i.qty || 1, dec(unitPrice(i)), dec(lineTotal(i)),
+    i.buy === '' || i.buy == null ? '' : dec(Number(i.buy)),
+    i.manual ? t('manual.short') : (i.pr ? SRC_NAME[i.pr.src] || '' : ''), i.pr ? fmtDate(i.pr.updated) : '', i.notes || ''].map(q).join(sep));
+  download(t('file.base') + '-' + todayISO() + '.csv', '﻿' + t('csv.head').join(sep) + '\n' + rows.join('\n'), 'text/csv;charset=utf-8');
+  toast(t('exp.csv'), 'ok');
 };
 $('#btnImport').onclick = () => $('#fileImport').click();
 $('#fileImport').onchange = e => {
@@ -1380,11 +1412,11 @@ $('#fileImport').onchange = e => {
   r.onload = () => {
     try {
       const o = JSON.parse(r.result);
-      if (!o || !Array.isArray(o.items)) throw new Error('El archivo no tiene el formato esperado');
+      if (!o || !Array.isArray(o.items)) throw new Error(t('imp.bad'));
       const entrantes = { items: o.items, wish: o.wish || [], hist: [], cfg: DEF.cfg };
       migrate(entrantes);
       const mode = S.items.length
-        ? (confirm('Ya tienes ' + plu(S.items.length, 'entrada', 'entradas') + '.\n\nAceptar = FUSIONAR con lo importado\nCancelar = REEMPLAZAR todo por el archivo') ? 'merge' : 'replace')
+        ? (confirm(t('imp.confirm', S.items.length)) ? 'merge' : 'replace')
         : 'replace';
       if (mode === 'replace') { S.items = entrantes.items; S.wish = entrantes.wish; S.hist = o.hist || []; }
       else {
@@ -1396,25 +1428,25 @@ $('#fileImport').onchange = e => {
         entrantes.wish.forEach(w => { if (!S.wish.some(x => x.id === w.id)) S.wish.push(Object.assign({}, w, { uid: uid() })); });
       }
       save(); syncSettingsUI(); renderCollection(); renderWish(); renderStats();
-      toast('Importadas ' + plu(entrantes.items.length, 'entrada', 'entradas'), 'ok');
-    } catch (err) { toast('No se pudo importar: ' + err.message, 'err'); }
+      toast(t('imp.done', entrantes.items.length), 'ok');
+    } catch (err) { toast(t('imp.fail', err.message), 'err'); }
     e.target.value = '';
   };
   r.readAsText(f);
 };
 $('#btnWipe').onclick = () => {
-  if (!confirm('Se borrará TODA tu colección de este navegador. ¿Seguro?')) return;
-  if (!confirm('Última confirmación: ¿has exportado una copia? Esto no se puede deshacer.')) return;
-  S = JSON.parse(JSON.stringify(DEF)); save(); syncSettingsUI(); renderCollection(); renderWish(); renderStats();
-  toast('Colección borrada');
+  if (!confirm(t('wipe.c1'))) return;
+  if (!confirm(t('wipe.c2'))) return;
+  S = nuevo(); save(); syncSettingsUI(); fillCatSelects(); fillSetSelects(); renderCollection(); renderWish(); renderStats();
+  toast(t('wipe.done'));
 };
-$('#setPriceMode').onchange = () => { S.cfg.priceMode = $('#setPriceMode').value; save(); renderCollection(); renderStats(); renderWish(); toast('Referencia de precio: ' + MODES[S.cfg.priceMode]); };
+$('#setPriceMode').onchange = () => { S.cfg.priceMode = $('#setPriceMode').value; save(); renderCollection(); renderStats(); renderWish(); toast(t('set.modeToast', modeName(S.cfg.priceMode))); };
 $('#setUseCond').onchange = () => { S.cfg.useCond = Number($('#setUseCond').value); save(); renderCollection(); renderStats(); };
-$('#btnSaveKey').onclick = () => { S.cfg.apiKey = $('#setApiKey').value.trim(); save(); toast(S.cfg.apiKey ? 'Clave guardada' : 'Clave eliminada', 'ok'); };
+$('#btnSaveKey').onclick = () => { S.cfg.apiKey = $('#setApiKey').value.trim(); save(); toast(S.cfg.apiKey ? t('key.saved') : t('key.removed'), 'ok'); };
 
 function syncSettingsUI() {
-  $('#setPriceMode').innerHTML = Object.keys(MODES).map(k =>
-    '<option value="' + k + '"' + (k === S.cfg.priceMode ? ' selected' : '') + '>' + esc(MODES[k]) + (k === 'trend' ? ' — recomendado' : '') + '</option>').join('');
+  $('#setPriceMode').innerHTML = MODES.map(k =>
+    '<option value="' + k + '"' + (k === S.cfg.priceMode ? ' selected' : '') + '>' + esc(modeName(k)) + (k === 'trend' ? t('set.recommended') : '') + '</option>').join('');
   $('#setUseCond').value = String(S.cfg.useCond);
   $('#setApiKey').value = S.cfg.apiKey || '';
   $('#condGrid').innerHTML = Object.keys(CONDS).map(k =>
@@ -1432,22 +1464,45 @@ function syncSettingsUI() {
       const fotos = S.items.filter(i => i.img && i.img.slice(0, 5) === 'data:').length;
       const pct = Math.min(100, Math.round((mb / 5) * 100));
       medidor = '<div style="margin-top:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">' +
-        '<span>Espacio usado' + (fotos ? ' · ' + plu(fotos, 'foto tuya', 'fotos tuyas') : '') + '</span>' +
-        '<b>' + mb.toFixed(2) + ' MB de ~5 MB</b></div><div class="bar"><i style="width:' + Math.max(1, pct) + '%"></i></div></div>';
+        '<span>' + t('set.used') + (fotos ? ' · ' + t('set.photos', fotos) : '') + '</span>' +
+        '<b>' + t('set.mb', mb.toFixed(2)) + '</b></div><div class="bar"><i style="width:' + Math.max(1, pct) + '%"></i></div></div>';
     } catch (e) {}
   }
-  $('#storeInfo').innerHTML = (storageOK
-    ? 'Guardado automáticamente en este navegador. <b>Ojo:</b> si borras los datos de navegación o abres el archivo en otro navegador u ordenador, no verás la colección. La copia JSON es tu seguro.'
-    : '<b style="color:#ff8b7a">⚠ Este navegador no permite guardar datos para archivos locales.</b> Tu colección solo vivirá mientras no cierres la pestaña: exporta el JSON antes de salir e impórtalo al volver.') + medidor;
+  $('#storeInfo').innerHTML = (storageOK ? t('set.store.ok') : t('set.store.no')) + medidor;
 
   const quedan = Math.round((new Date(PKM_EOL) - new Date()) / 864e5);
-  $('#srcInfo').innerHTML =
-    '<b>Fuente principal: TCGdex.</b> Gratis, sin clave, con catálogo en español, inglés y japonés, y precios de Cardmarket actualizados a diario.<br>' +
-    '<b>Respaldo: pokemontcg.io.</b> Solo se consulta cuando TCGdex no tiene precio de una carta, cosa que pasa en unas 90 expansiones inglesas. ' +
-    (quedan > 0
-      ? 'Esta segunda fuente se apaga el 1 de marzo de 2027 (quedan ' + quedan + ' días). Cuando llegue el día, las cartas que dependan de ella conservarán su último precio conocido y el resto seguirá actualizándose con normalidad.'
-      : '<b style="color:#ff8b7a">Esta segunda fuente ya está apagada</b>, así que las cartas que dependían de ella conservan su último precio conocido.');
+  $('#srcInfo').innerHTML = t('set.src') + (quedan > 0 ? t('set.src.eol', quedan) : t('set.src.off'));
 }
+
+/* ============================================================
+   IDIOMA
+   Los textos fijos de la página llevan data-i18n (o data-i18n-ph, para
+   los placeholder) con su clave; lo que se pinta desde el código ya pasa
+   por t(), así que cambiar de idioma es repintar.
+   ============================================================ */
+function aplicarTextos() {
+  document.documentElement.lang = LANG;
+  document.title = t('app.title');
+  $$('[data-i18n]').forEach(el => { el.innerHTML = t(el.dataset.i18n); });
+  $$('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  $('#btnViewMode').innerHTML = etiquetaVista();
+  const sel = $('#uiLang');
+  sel.value = LANG;
+  sel.title = t('ui.lang');
+}
+function setLang(l) {
+  if (!TEXTOS[l] || l === LANG) return;
+  LANG = l;
+  try { localStorage.setItem(LANG_KEY, l); } catch (e) {}
+  aplicarTextos();
+  syncSettingsUI(); fillCatSelects(); fillSetSelects();
+  renderCollection(); renderWish(); renderStats();
+  /* Los resultados en pantalla se repintan; los avisos sueltos (sin
+     resultados, un error) vuelven al mensaje inicial. */
+  if (searchCards.length) renderSearchResults(); else $('#searchOut').innerHTML = vacio('🔍', t('search.start'));
+  if (setCards.length) renderSet(); else $('#setOut').innerHTML = vacio('🗂️', t('sets.start'));
+}
+$('#uiLang').onchange = e => setLang(e.target.value);
 
 /* ============================================================
    ARRANQUE
@@ -1455,11 +1510,14 @@ function syncSettingsUI() {
 let S = load();
 buildSetIndex();
 (function init() {
+  aplicarTextos();
+  $('#searchOut').innerHTML = vacio('🔍', t('search.start'));
+  $('#setOut').innerHTML = vacio('🗂️', t('sets.start'));
   syncSettingsUI();
   fillCatSelects();
   fillSetSelects();
   renderCollection();
   renderWish();
   const viejas = S.items.filter(i => !i.manual && i.pr && i.pr.updated && i.pr.updated !== todayISO());
-  if (viejas.length) toast('Consejo: pulsa «Actualizar precios» para traer los valores de hoy');
+  if (viejas.length) toast(t('tip.update'));
 })();

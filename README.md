@@ -2,7 +2,9 @@
 
 Organizador de colecciones de cartas coleccionables. Hoy está hecho para **Pokémon TCG**: inventario, lista de deseos, explorador de expansiones, estadísticas y precios en euros de Cardmarket. Funciona igual con cartas en español, inglés y japonés.
 
-> **English:** a trading-card collection organizer, currently built for the Pokémon TCG. It's a single HTML file: your collection stays in your browser and is never sent to any server. The interface is Spanish-only for now; English is on the way.
+La interfaz está en **español e inglés**: se elige en el selector de la cabecera y se recuerda. La primera vez usa el idioma de tu navegador.
+
+> **English:** a trading-card collection organizer, currently built for the Pokémon TCG: inventory, wishlist, set browser, statistics and Cardmarket prices in euros. It works with Spanish, English and Japanese cards. The interface is available in **English and Spanish**; pick one from the selector in the header (it starts in your browser's language). It's a single HTML file: download `organizador-pokemon-tcg.html` and open it. Your collection stays in your browser and is never sent to any server.
 
 ## Cómo usarlo
 
@@ -34,6 +36,8 @@ La app es un único HTML con el código y varios diccionarios incrustados. **No 
 
 1. Edita `herramientas/newscript.js`.
 2. Ejecuta `node herramientas/splice.js`, que vuelve a montar el `<script>` con el código y los diccionarios.
+
+Los textos de la interfaz viven en `herramientas/textos.js`, en español y en inglés. En el código se piden con `t('clave')`, y en el HTML con `data-i18n="clave"` (o `data-i18n-ph` para los placeholder). `splice.js` no monta la app si a un idioma le falta una clave o si se usa una que no existe.
 
 Los diccionarios (catálogo de expansiones, nombres latino↔katakana, códigos de Cardmarket) se regeneran con los `gen-*.js` de `herramientas/`, ejecutados desde esa carpeta.
 
