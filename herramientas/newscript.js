@@ -1,0 +1,1465 @@
+'use strict';
+/* ============================================================
+   Mi Colección Pokémon TCG
+
+   FUENTES DE DATOS
+   1) TCGdex (principal) — gratis, sin clave, con catálogo en español,
+      inglés y japonés, y precios de Cardmarket actualizados a diario.
+   2) pokemontcg.io (respaldo) — solo se consulta cuando TCGdex no tiene
+      precio para una carta, cosa que ocurre en unas 90 expansiones
+      inglesas. Esta API se apaga el 1 de marzo de 2027; cuando eso pase,
+      la app avisa y esas cartas conservan su último precio conocido.
+   ============================================================ */
+
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+
+const TCG = 'https://api.tcgdex.net/v2';
+const PKM = 'https://api.pokemontcg.io/v2';
+const PKM_EOL = '2027-03-01';
+const KEY = 'ptcg_col_v3';
+
+const CATS  = { es: 'Español', en: 'English', ja: '日本語 (japonés)' };
+const IDIOMA_DE_CAT = { es: 'ES', en: 'EN', ja: 'JP' };
+const CONDS = { M:'Mint (M)', NM:'Near Mint (NM)', EX:'Excellent (EX)', GD:'Good (GD)', LP:'Light Played (LP)', PL:'Played (PL)', PO:'Poor (PO)' };
+const VARS  = { normal:'Normal', holo:'Holo', reverse:'Reverse Holo', '1st':'1ª Edición', promo:'Promo' };
+const LANGS = ['ES','EN','FR','DE','IT','PT','JP','KR','ZH','Otro'];
+const MODES = { trend:'Tendencia', avg:'Media de venta', avg30:'Media 30 días', avg7:'Media 7 días', low:'Más bajo' };
+
+const DEF = {
+  v: 3, items: [], wish: [], hist: [],
+  cfg: { cat:'es', priceMode:'trend', useCond:1, apiKey:'',
+         cond:{ M:1.05, NM:1, EX:0.9, GD:0.75, LP:0.6, PL:0.45, PO:0.3 } }
+};
+
+/* ---------- utilidades ---------- */
+const eur = n => new Intl.NumberFormat('es-ES', { style:'currency', currency:'EUR' }).format(Number(n) || 0);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const uid = () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const plu = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+function haceCuanto(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (isNaN(ms)) return '—';
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'ahora mismo';
+  if (min < 60) return 'hace ' + plu(min, 'minuto', 'minutos');
+  const h = Math.round(min / 60);
+  if (h < 24) return 'hace ' + plu(h, 'hora', 'horas');
+  return 'hace ' + plu(Math.round(h / 24), 'día', 'días');
+}
+const fmtDate = d => {
+  if (!d) return '—';
+  const s = String(d).replace(/\//g, '-').slice(0, 10).split('-');
+  return s.length === 3 ? s[2] + '/' + s[1] + '/' + s[0] : String(d);
+};
+const imgUrl = (base, q) => {
+  if (!base) return '';
+  if (base.slice(0, 5) === 'data:') return base;               // foto tuya, incrustada
+  if (/_SM\.png$/i.test(base)) return q === 'high' ? base.replace(/_SM\.png$/i, '_LG.png') : base;
+  if (/\.(png|webp|jpe?g)$/i.test(base)) return base;          // url ya completa
+  return base + (q === 'high' ? '/high.png' : '/low.webp');    // TCGdex sirve la calidad aparte
+};
+/* Cardmarket identifica cada carta como «código de expansión + número»
+   (sv11B 161, PAR 066, MEW 111), y buscando así cae directo en su ficha en
+   vez de en una lista. Para las japonesas el código es el mismo que usa el
+   catálogo; para las occidentales es la abreviatura oficial, que llevamos
+   en CM_CODIGO. Si no tenemos ni código ni número, buscamos por el nombre
+   occidental (グラードン -> Groudon). */
+const cmSearchUrl = c => {
+  const url = t => 'https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=' + encodeURIComponent(t);
+  if (typeof c === 'string') return url(c);
+  if (!c) return url('');
+  if (c.setId && c.number && !c.manual) {
+    const codigo = (typeof CM_CODIGO !== 'undefined' && CM_CODIGO[c.setId]) || c.setId;
+    return url(codigo + ' ' + c.number);
+  }
+  return url(c.alt || c.name || '');
+};
+
+let toastT;
+function toast(msg, kind) {
+  const h = $('#toastHost');
+  h.innerHTML = '<div class="toast ' + (kind || '') + '">' + esc(msg) + '</div>';
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { h.innerHTML = ''; }, kind === 'err' ? 6500 : 3400);
+}
+function progress(p) { $('#pgbar').style.width = (p <= 0 || p >= 100 ? 0 : p) + '%'; }
+
+/* ---------- almacenamiento ---------- */
+let storageOK = true;
+try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); } catch (e) { storageOK = false; }
+
+function migrate(s) {
+  /* v2 guardaba los precios crudos de pokemontcg.io en "cm". Los pasamos
+     al formato neutro "pr" para que convivan las dos fuentes. */
+  const MODEMAP = { trendPrice:'trend', averageSellPrice:'avg', avg30:'avg30', avg7:'avg7', lowPrice:'low', lowPriceExPlus:'low' };
+  if (MODEMAP[s.cfg.priceMode]) s.cfg.priceMode = MODEMAP[s.cfg.priceMode];
+  if (!MODES[s.cfg.priceMode]) s.cfg.priceMode = 'trend';
+  if (!CATS[s.cfg.cat]) s.cfg.cat = 'es';
+  const vistos = {};
+  s.items.concat(s.wish).forEach(it => {
+    if (!it.pr && it.cm) it.pr = prFromPkm(it.cm, it.cmUp);
+    delete it.cm; delete it.cmUp; delete it.cmUrl;
+    if (!it.cat) it.cat = 'en';
+    if (it.img && it.imgBig) delete it.imgBig;
+    /* Sin identificador propio no se puede editar ni borrar: se lo damos
+       aquí, que es por donde pasa todo lo que entra (carga e importación). */
+    if (!it.uid || vistos[it.uid]) it.uid = uid();
+    vistos[it.uid] = 1;
+    /* Las que se guardaron sin imagen recuperan la del archivo público. */
+    if (!it.img && !it.manual) it.img = imagenDeRespaldo(it.cat, it.setId, it.number);
+    /* Y las japonesas antiguas, su nombre occidental, que hace falta para
+       reconocerlas y para buscarlas en Cardmarket. */
+    if (it.cat === 'ja' && !it.alt) it.alt = latinName(it.name);
+  });
+  return s;
+}
+function load() {
+  if (!storageOK) return JSON.parse(JSON.stringify(DEF));
+  let raw = null;
+  try { raw = localStorage.getItem(KEY) || localStorage.getItem('ptcg_col_v2'); } catch (e) {}
+  if (!raw) return JSON.parse(JSON.stringify(DEF));
+  try {
+    const o = JSON.parse(raw);
+    const s = JSON.parse(JSON.stringify(DEF));
+    s.items = Array.isArray(o.items) ? o.items : [];
+    s.wish  = Array.isArray(o.wish)  ? o.wish  : [];
+    s.hist  = Array.isArray(o.hist)  ? o.hist  : [];
+    if (o.cfg) { Object.assign(s.cfg, o.cfg); Object.assign(s.cfg.cond, o.cfg.cond || {}); }
+    return migrate(s);
+  } catch (e) { return JSON.parse(JSON.stringify(DEF)); }
+}
+function save() {
+  if (!storageOK) return;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (e) { toast('No se pudo guardar: almacenamiento lleno. Exporta una copia.', 'err'); }
+}
+
+/* ---------- precios: formato neutro para las dos fuentes ---------- */
+function prFromTcgdex(cm) {
+  if (!cm) return null;
+  return {
+    trend: cm.trend, avg: cm.avg, low: cm.low, avg1: cm.avg1, avg7: cm.avg7, avg30: cm.avg30,
+    rtrend: cm['trend-holo'], ravg: cm['avg-holo'], rlow: cm['low-holo'],
+    ravg1: cm['avg1-holo'], ravg7: cm['avg7-holo'], ravg30: cm['avg30-holo'],
+    unit: cm.unit || 'EUR', updated: String(cm.updated || '').slice(0, 10), src: 'tcgdex'
+  };
+}
+function prFromPkm(p, updated) {
+  if (!p) return null;
+  return {
+    trend: p.trendPrice, avg: p.averageSellPrice, low: p.lowPrice, avg1: p.avg1, avg7: p.avg7, avg30: p.avg30,
+    rtrend: p.reverseHoloTrend, ravg: p.reverseHoloSell, rlow: p.reverseHoloLow,
+    ravg1: p.reverseHoloAvg1, ravg7: p.reverseHoloAvg7, ravg30: p.reverseHoloAvg30,
+    unit: 'EUR', updated: String(updated || '').replace(/\//g, '-').slice(0, 10), src: 'pokemontcg'
+  };
+}
+const SRC_NAME = { tcgdex: 'TCGdex', pokemontcg: 'pokemontcg.io' };
+
+function basePrice(pr, variant) {
+  if (!pr) return 0;
+  const m = S.cfg.priceMode;
+  if (variant === 'reverse') { const rv = pr['r' + m]; if (rv > 0) return rv; }
+  const order = [m, 'trend', 'avg', 'avg30', 'avg7', 'low'];
+  for (let i = 0; i < order.length; i++) { const v = pr[order[i]]; if (v > 0) return v; }
+  return 0;
+}
+/* Un precio puesto a mano manda sobre el automático. Hace falta para las
+   cartas que ninguna fuente cotiza —muchas japonesas— y para cuando no te
+   convence la referencia. No se le aplica el ajuste por estado: estás
+   poniendo lo que vale tu ejemplar, no un precio de catálogo que descontar. */
+const precioManual = it => {
+  if (it.mp === '' || it.mp == null) return null;
+  const n = Number(it.mp);
+  return isNaN(n) ? null : n;
+};
+const tienePrecioAuto = it => !it.manual && basePrice(it.pr, it.variant) > 0;
+
+function unitPrice(it) {
+  const m = precioManual(it);
+  if (m != null && m > 0) return m;
+  if (it.manual) return m || 0;
+  let p = basePrice(it.pr, it.variant);
+  if (S.cfg.useCond) { const k = S.cfg.cond[it.cond]; p *= (k == null ? 1 : k); }
+  return p;
+}
+const lineTotal = it => unitPrice(it) * (it.qty || 1);
+const sumValue  = list => list.reduce((a, b) => a + lineTotal(b), 0);
+const sumCount  = list => list.reduce((a, b) => a + (b.qty || 1), 0);
+const sumBuy    = list => list.reduce((a, b) => a + (Number(b.buy) || 0) * (b.qty || 1), 0);
+
+/* ---------- red ---------- */
+async function getJSON(url, tries, headers) {
+  tries = tries || 3;
+  let last = null;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { headers: headers || {} });
+      if (r.status === 404) return null;
+      if (r.status === 429) { last = new Error('Demasiadas consultas seguidas. Espera un minuto.'); await sleep(1500 * (i + 1)); continue; }
+      if (r.status >= 500) { last = new Error('El servidor está ocupado (' + r.status + ')'); await sleep(600 * (i + 1)); continue; }
+      if (!r.ok) throw new Error('Error ' + r.status);
+      return await r.json();
+    } catch (e) { last = e; await sleep(500 * (i + 1)); }
+  }
+  throw last || new Error('Sin conexión');
+}
+const tcg = (path, tries) => getJSON(TCG + path, tries || 3);
+const pkm = (path) => getJSON(PKM + path, 5, S.cfg.apiKey ? { 'X-Api-Key': S.cfg.apiKey } : {});
+
+/* Ejecuta tareas en paralelo controlado: la API aguanta bien 6 a la vez. */
+async function pool(list, worker, workers, onProgress) {
+  const q = list.slice();
+  const total = list.length;
+  let done = 0;
+  await Promise.all(Array.from({ length: Math.min(workers || 6, Math.max(1, total)) }, async () => {
+    while (q.length) {
+      await worker(q.shift());
+      done++;
+      if (onProgress) onProgress(done, total);
+    }
+  }));
+}
+
+/* ---------- catálogo de expansiones (incrustado, ver SETS_RAW) ---------- */
+const setsOf = cat => (SETS_RAW[cat] || []).map(a => ({ id:a[0], name:a[1], serie:a[2], date:a[3], total:a[4] }));
+let SETIDX = {};
+function buildSetIndex() {
+  SETIDX = {};
+  Object.keys(SETS_RAW).forEach(cat => {
+    SETIDX[cat] = {};
+    setsOf(cat).forEach(s => { SETIDX[cat][s.id] = s; });
+  });
+}
+const setInfo = (cat, id) => (SETIDX[cat] && SETIDX[cat][id]) || null;
+const tieneKana = s => /[぀-ヿ]/.test(String(s || ''));
+/* A los nombres japoneses les pegamos la transliteración detrás: son casi
+   siempre palabras inglesas escritas en katakana, así se reconocen. */
+function setLabel(s) {
+  const anio = s.date ? ' (' + String(s.date).slice(0, 4) + ')' : '';
+  if (tieneKana(s.name)) {
+    const r = romaji(s.name);
+    if (r) return s.name + ' · ' + r + anio;
+  }
+  return s.name + anio;
+}
+function serieLabel(nombre) {
+  if (!tieneKana(nombre)) return nombre;
+  const r = romaji(nombre);
+  return r ? nombre + ' · ' + r : nombre;
+}
+
+function fillSetSelects() {
+  const cat = S.cfg.cat;
+  const grouped = {};
+  setsOf(cat).forEach(s => { (grouped[s.serie] = grouped[s.serie] || []).push(s); });
+  const opts = Object.keys(grouped).map(g =>
+    '<optgroup label="' + esc(serieLabel(g)) + '">' +
+    grouped[g].map(s => '<option value="' + esc(s.id) + '">' + esc(setLabel(s)) + '</option>').join('') +
+    '</optgroup>').join('');
+  [['#qSet', '<option value="">Cualquier expansión</option>'],
+   ['#sSet', '<option value="">— Elige una expansión —</option>']].forEach(p => {
+    const el = $(p[0]); if (!el) return;
+    const prev = el.value;
+    el.innerHTML = p[1] + opts;
+    if (prev) el.value = prev;
+  });
+}
+function fillCatSelects() {
+  const opts = Object.keys(CATS).map(k =>
+    '<option value="' + k + '"' + (k === S.cfg.cat ? ' selected' : '') + '>' + esc(CATS[k]) + '</option>').join('');
+  ['#qCat', '#sCat'].forEach(sel => { const el = $(sel); if (el) el.innerHTML = opts; });
+}
+function setCat(cat) {
+  if (!CATS[cat]) return;
+  S.cfg.cat = cat; save();
+  fillCatSelects(); fillSetSelects();
+  setCards = [];
+  $('#setOut').innerHTML = '<div class="empty"><div class="big">🗂️</div>Elige una expansión y pulsa <b>Cargar expansión</b>.</div>';
+  $('#setProgress').innerHTML = '';
+}
+
+/* ---------- normalización de cartas ---------- */
+/* ---------- nombres japoneses <-> occidentales (ver JA_DESDE_LATIN) ----------
+   Para poder escribir "Groudon" y que busque グラードン, y para enseñar el
+   nombre reconocible debajo de las cartas japonesas. */
+const normLatin = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+const tieneLatin = s => /[a-zA-Z]/.test(String(s || ''));
+
+function aJapones(texto) {
+  const t = JA_DESDE_LATIN[normLatin(texto)];
+  return t || '';
+}
+/* El nombre del Pokémon puede venir con adornos delante y detrás:
+   メガスターミーex = メガ (Mega) + スターミー (Starmie) + ex. Buscamos dentro
+   del nombre la entrada más larga del diccionario y transliteramos el resto. */
+function latinName(ja) {
+  if (!ja) return '';
+  if (LATIN_DESDE_JA[ja]) return LATIN_DESDE_JA[ja];
+  let clave = null, pos = -1;
+  for (const k in LATIN_DESDE_JA) {
+    if (k.length < 2) continue;
+    const i = ja.indexOf(k);
+    if (i >= 0 && (!clave || k.length > clave.length)) { clave = k; pos = i; }
+  }
+  if (!clave) return '';
+  const trozo = s => (s ? (/[぀-ヿ]/.test(s) ? romaji(s) : s) : '');
+  return [trozo(ja.slice(0, pos)), LATIN_DESDE_JA[clave], trozo(ja.slice(pos + clave.length))]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function pickCardmarket(d) {
+  const vs = d.variants_detailed || [];
+  for (let i = 0; i < vs.length; i++) if (vs[i].pricing && vs[i].pricing.cardmarket) return vs[i].pricing.cardmarket;
+  return null;
+}
+/* TCGdex no tiene foto de todas las cartas, y de las japonesas no tiene
+   casi ninguna. Recurrimos a dos archivos públicos que sí las sirven y que
+   nombran los ficheros de forma predecible. Si la carta no estuviera, el
+   hueco muestra su nombre y siempre puedes ponerle tu propia foto. */
+function imagenDeRespaldo(cat, setId, num) {
+  if (!setId || !num) return '';
+  const n = /^[0-9]+$/.test(String(num)) ? String(parseInt(num, 10)) : num;
+  if (cat === 'ja') return 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc/' + setId + '/' + setId + '_' + n + '_R_JP_SM.png';
+  return 'https://images.pokemontcg.io/' + setId + '/' + n + '.png';
+}
+
+function normCard(d, cat) {
+  const si = setInfo(cat, (d.set && d.set.id) || '');
+  return {
+    id: d.id, cat: cat,
+    name: d.name || '',
+    setId: (d.set && d.set.id) || '',
+    setName: (d.set && d.set.name) || (si && si.name) || '',
+    series: (d.serie && d.serie.name) || (si && si.serie) || '—',
+    number: d.localId || '',
+    rarity: d.rarity || '—',
+    img: d.image || imagenDeRespaldo(cat, (d.set && d.set.id) || '', d.localId),
+    alt: cat === 'ja' ? latinName(d.name) : '',
+    pr: prFromTcgdex(pickCardmarket(d))
+  };
+}
+/* Traduce un id de TCGdex al de pokemontcg.io: xy5 + "084" -> xy5-84.
+   Comprobado contra 20 expansiones: encajan todas. */
+const pkmIdOf = it => {
+  const n = String(it.number || '');
+  return it.setId + '-' + (/^[0-9]+$/.test(n) ? String(parseInt(n, 10)) : n);
+};
+
+/* ============================================================
+   NAVEGACIÓN
+   ============================================================ */
+$$('nav.tabs button').forEach(b => b.onclick = () => {
+  $$('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $$('section.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + b.dataset.v));
+  window.scrollTo(0, 0);
+  if (b.dataset.v === 'stats') renderStats();
+  if (b.dataset.v === 'deseos') renderWish();
+  if (b.dataset.v === 'ajustes') syncSettingsUI();   // refresca el medidor de espacio
+});
+
+/* ============================================================
+   TARJETA
+   ============================================================ */
+function cardHTML(c, opts) {
+  opts = opts || {};
+  /* El hueco con el nombre va siempre debajo: si la imagen no carga, la
+     tapamos y aparece él, en vez de quedar un rectángulo vacío. */
+  const src = imgUrl(c.img, 'low');
+  const img = '<div class="ph">' + esc(c.name) + '</div>' +
+    (src ? '<img src="' + esc(src) + '" alt="' + esc(c.name) + '" loading="lazy" style="position:relative" onerror="this.style.display=\'none\'">' : '');
+  let price = opts.priceText;
+  if (price == null) {
+    const p = basePrice(c.pr, c.variant);
+    price = p ? eur(p) + ' <small>/ud</small>' : '<small style="color:var(--tx3)">sin precio</small>';
+  }
+  return '<div class="card' + (opts.owned ? ' own' : '') + '">' +
+    '<div class="imgbox">' + img +
+      (opts.qty ? '<span class="qbadge">×' + opts.qty + '</span>' : '') +
+      (opts.variant ? '<span class="vbadge v-' + esc(opts.variant) + '">' + esc(VARS[opts.variant] || opts.variant) + '</span>' : '') +
+    '</div>' +
+    '<div class="body">' +
+      '<div class="nm">' + esc(c.name) + '</div>' +
+      (c.alt ? '<div class="meta" style="color:var(--acc2);font-weight:700">' + esc(c.alt) + '</div>' : '') +
+      '<div class="meta">' + esc(c.setName) + ' · ' + esc(c.number) + '</div>' +
+      '<div class="meta">' + esc(c.rarity) + (opts.sub ? ' · ' + esc(opts.sub) : '') + '</div>' +
+      '<div class="pr">' + price + '</div>' +
+    '</div>' +
+    (opts.actions ? '<div class="cardacts">' + opts.actions + '</div>' : '') +
+  '</div>';
+}
+function tile(k, v, n, cls) {
+  return '<div class="tile"><div class="k">' + esc(k) + '</div><div class="v ' + (cls || '') + '">' + v + '</div><div class="n">' + esc(n || '') + '</div></div>';
+}
+
+/* ============================================================
+   MI COLECCIÓN
+   ============================================================ */
+let viewMode = 'grid';
+
+function fillFilters() {
+  const sets = {}, rars = {}, langs = {};
+  S.items.forEach(i => { if (i.setName) sets[i.setId || i.setName] = i.setName; if (i.rarity) rars[i.rarity] = 1; if (i.lang) langs[i.lang] = 1; });
+  const keep = (sel, val) => { sel.value = val; if (sel.value !== val) sel.value = ''; };
+  const s1 = $('#fSet'), v1 = s1.value;
+  s1.innerHTML = '<option value="">Todas las expansiones</option>' + Object.keys(sets).sort((a, b) => sets[a].localeCompare(sets[b])).map(k => '<option value="' + esc(k) + '">' + esc(sets[k]) + '</option>').join('');
+  keep(s1, v1);
+  const s2 = $('#fRar'), v2 = s2.value;
+  s2.innerHTML = '<option value="">Todas</option>' + Object.keys(rars).sort().map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
+  keep(s2, v2);
+  const s3 = $('#fVar'), v3 = s3.value;
+  s3.innerHTML = '<option value="">Todas</option>' + Object.keys(VARS).map(k => '<option value="' + k + '">' + VARS[k] + '</option>').join('');
+  keep(s3, v3);
+  const s4 = $('#fLang'), v4 = s4.value;
+  s4.innerHTML = '<option value="">Todos</option>' + Object.keys(langs).sort().map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
+  keep(s4, v4);
+}
+
+function filtered() {
+  const t = $('#fText').value.trim().toLowerCase();
+  const set = $('#fSet').value, rar = $('#fRar').value, va = $('#fVar').value, la = $('#fLang').value;
+  const pre = $('#fPrice').value;
+  const out = S.items.filter(i => {
+    if (set && (i.setId || i.setName) !== set) return false;
+    if (rar && i.rarity !== rar) return false;
+    if (va && i.variant !== va) return false;
+    if (la && i.lang !== la) return false;
+    if (pre === 'sin' && unitPrice(i) > 0) return false;
+    if (pre === 'mio' && !(precioManual(i) > 0)) return false;
+    if (pre === 'auto' && !tienePrecioAuto(i)) return false;
+    if (t) {
+      const hay = (i.name + ' ' + i.setName + ' ' + i.number + ' ' + (i.notes || '') + ' ' + i.rarity + ' ' + i.id).toLowerCase();
+      if (hay.indexOf(t) === -1) return false;
+    }
+    return true;
+  });
+  const cmp = {
+    'value-desc': (a, b) => lineTotal(b) - lineTotal(a),
+    'value-asc':  (a, b) => lineTotal(a) - lineTotal(b),
+    'unit-desc':  (a, b) => unitPrice(b) - unitPrice(a),
+    'name-asc':   (a, b) => a.name.localeCompare(b.name),
+    'set-asc':    (a, b) => (a.setName || '').localeCompare(b.setName || '') || (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0),
+    'added-desc': (a, b) => String(b.added || '').localeCompare(String(a.added || '')),
+    'qty-desc':   (a, b) => (b.qty || 1) - (a.qty || 1)
+  }[$('#fSort').value];
+  return out.sort(cmp);
+}
+
+function renderCollection() {
+  fillFilters();
+  const list = filtered();
+  const all = S.items;
+  const buy = sumBuy(all), val = sumValue(all), diff = val - buy;
+  const fechas = all.map(i => (i.pr && i.pr.updated) || '').filter(Boolean).sort();
+
+  $('#colTiles').innerHTML = [
+    tile('Cartas en total', String(sumCount(all)), plu(all.length, 'entrada distinta', 'entradas distintas')),
+    tile('Valor estimado', eur(val), 'Referencia: ' + (MODES[S.cfg.priceMode] || '') + ' de Cardmarket'),
+    tile('Invertido', buy ? eur(buy) : '—', buy ? 'Precio de compra anotado' : 'Anota lo que pagaste al añadir'),
+    buy ? tile('Ganancia / pérdida', (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg')
+        : tile('Carta más cara', all.length ? eur(Math.max.apply(null, all.map(unitPrice))) : '—', 'Precio por unidad'),
+    /* Dos fechas distintas que la gente confunde: la de los datos (cuándo
+       Cardmarket calculó esos precios) y la de tu última consulta. */
+    tile('Precios de Cardmarket',
+         fechas.length ? fmtDate(fechas[fechas.length - 1]) : 'nunca',
+         (S.lastCheck ? 'Comprobado ' + haceCuanto(S.lastCheck) : 'Pulsa «Actualizar precios»') +
+         (fechas.length > 1 && fechas[0] !== fechas[fechas.length - 1] ? ' · los más viejos, del ' + fmtDate(fechas[0]) : ''))
+  ].join('');
+
+  $('#hCount').textContent = sumCount(all);
+  $('#hValue').textContent = eur(val);
+
+  const out = $('#colOut');
+  if (!all.length) {
+    out.innerHTML = '<div class="empty"><div class="big">📚</div><b>Tu colección está vacía.</b><br>Ve a <b>Buscar y añadir</b> o a <b>Explorar expansiones</b> para registrar tus primeras cartas.</div>';
+    return;
+  }
+  if (!list.length) { out.innerHTML = '<div class="empty"><div class="big">🔎</div>Ningún resultado con esos filtros.</div>'; return; }
+
+  const head = '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">Mostrando <b style="color:var(--tx)">' + list.length +
+    '</b> de ' + plu(all.length, 'entrada', 'entradas') + ' · ' + plu(sumCount(list), 'carta', 'cartas') +
+    ' · <b style="color:var(--acc)">' + eur(sumValue(list)) + '</b></div>';
+
+  if (viewMode === 'grid') {
+    out.innerHTML = head + '<div class="grid">' + list.map(i => cardHTML(i, {
+      qty: i.qty, variant: i.variant,
+      sub: i.cond + ' · ' + i.lang + (i.manual ? ' · a mano' : ''),
+      priceText: (unitPrice(i) ? eur(unitPrice(i)) + ' <small>/ud · ' + eur(lineTotal(i)) + ' total</small>' : '<small style="color:var(--tx3)">sin precio</small>'),
+      /* El atajo a Cardmarket va en todas; resaltado en las que no tienen
+         precio, que son las que hay que resolver a mano. */
+      actions: '<button class="btn sm" data-edit="' + i.uid + '">✎</button>' +
+        '<a class="btn sm' + (unitPrice(i) ? '' : ' pri') + '" href="' + esc(cmSearchUrl(i)) + '" target="_blank" rel="noopener" title="Ver esta carta en Cardmarket" style="text-decoration:none">€ ↗</a>' +
+        '<button class="btn sm danger" data-del="' + i.uid + '">🗑</button>'
+    })).join('') + '</div>';
+  } else {
+    out.innerHTML = head + '<div class="tblwrap"><table><thead><tr>' +
+      '<th></th><th>Carta</th><th>Expansión</th><th>Nº</th><th>Rareza</th><th>Var.</th><th>Est.</th><th>Idi.</th>' +
+      '<th class="num">Cant.</th><th class="num">Ud.</th><th class="num">Total</th><th class="num">Compra</th><th>Fuente</th><th></th></tr></thead><tbody>' +
+      list.map(i =>
+        '<tr>' +
+        '<td>' + (imgUrl(i.img, 'low') ? '<img class="tmini" src="' + esc(imgUrl(i.img, 'low')) + '" loading="lazy" alt="">' : '') + '</td>' +
+        '<td><b>' + esc(i.name) + '</b>' + (i.notes ? '<div style="font-size:11px;color:var(--tx3)">' + esc(i.notes) + '</div>' : '') + '</td>' +
+        '<td style="color:var(--tx2)">' + esc(i.setName) + '</td>' +
+        '<td style="color:var(--tx2)">' + esc(i.number) + '</td>' +
+        '<td style="color:var(--tx2)">' + esc(i.rarity) + '</td>' +
+        '<td><span class="chip">' + esc(VARS[i.variant] || i.variant) + '</span></td>' +
+        '<td><span class="chip">' + esc(i.cond) + '</span></td>' +
+        '<td style="color:var(--tx2)">' + esc(i.lang) + '</td>' +
+        '<td class="num"><b>' + (i.qty || 1) + '</b></td>' +
+        '<td class="num">' + eur(unitPrice(i)) + '</td>' +
+        '<td class="num"><b style="color:var(--acc)">' + eur(lineTotal(i)) + '</b></td>' +
+        '<td class="num" style="color:var(--tx3)">' + (i.buy ? eur(i.buy) : '—') + '</td>' +
+        '<td style="color:var(--tx3);font-size:11px">' + (i.manual ? 'a mano' : (i.pr ? SRC_NAME[i.pr.src] || '' : '—')) + '</td>' +
+        '<td style="white-space:nowrap"><button class="btn sm" data-edit="' + i.uid + '">✎</button> <button class="btn sm danger" data-del="' + i.uid + '">🗑</button></td>' +
+        '</tr>').join('') +
+      '</tbody></table></div>';
+  }
+}
+
+['fText','fSet','fRar','fVar','fLang','fPrice','fSort'].forEach(id => {
+  const el = $('#' + id);
+  el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', renderCollection);
+});
+$('#btnClearF').onclick = () => { ['fText','fSet','fRar','fVar','fLang','fPrice'].forEach(id => $('#' + id).value = ''); $('#fSort').value = 'value-desc'; renderCollection(); };
+$('#btnViewMode').onclick = () => {
+  viewMode = viewMode === 'grid' ? 'table' : 'grid';
+  $('#btnViewMode').innerHTML = viewMode === 'grid' ? '📋 Ver como tabla' : '🖼️ Ver como cuadrícula';
+  renderCollection();
+};
+
+/* ---------- clics delegados ---------- */
+document.addEventListener('click', async e => {
+  const ed = e.target.closest('[data-edit]');
+  if (ed) {
+    const it = S.items.find(x => x.uid === ed.dataset.edit);
+    if (it) openModal(it); else toast('No encuentro esa carta. Recarga la página.', 'err');
+    return;
+  }
+
+  const dl = e.target.closest('[data-del]');
+  if (dl) {
+    const it = S.items.find(x => x.uid === dl.dataset.del);
+    if (!it) { toast('No encuentro esa carta. Recarga la página y vuelve a intentarlo.', 'err'); return; }
+    if (confirm('¿Quitar «' + it.name + '» (' + it.setName + ' ' + it.number + ') de tu colección?')) {
+      const antes = S.items.length;
+      S.items = S.items.filter(x => x !== it);
+      save(); renderCollection();
+      toast(S.items.length < antes ? 'Carta eliminada' : 'No se pudo eliminar', S.items.length < antes ? '' : 'err');
+    }
+    return;
+  }
+  const wd = e.target.closest('[data-wdel]');
+  if (wd) { S.wish = S.wish.filter(x => x.uid !== wd.dataset.wdel); save(); renderWish(); toast('Quitada de deseos'); return; }
+
+  const wm = e.target.closest('[data-wmove]');
+  if (wm) {
+    const w = S.wish.find(x => x.uid === wm.dataset.wmove);
+    if (w) { S.wish = S.wish.filter(x => x.uid !== w.uid); save(); renderWish(); openModal(null, w); }
+    return;
+  }
+  const ad = e.target.closest('[data-add]');
+  if (ad) {
+    const card = await loadCard(ad.dataset.add, ad.dataset.cat, ad);
+    if (card) openModal(null, card);
+    return;
+  }
+  const wi = e.target.closest('[data-wish]');
+  if (wi) {
+    const card = await loadCard(wi.dataset.wish, wi.dataset.cat, wi);
+    if (card) addWish(card);
+    return;
+  }
+});
+
+/* Trae la ficha completa (con precios) justo antes de añadir la carta. */
+async function loadCard(id, cat, btn) {
+  const txt = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '…'; btn.disabled = true; }
+  try {
+    const d = await tcg('/' + (cat || S.cfg.cat) + '/cards/' + encodeURIComponent(id));
+    if (!d) throw new Error('No se encontró la carta');
+    const c = normCard(d, cat || S.cfg.cat);
+    if (!c.pr) { const fb = await fallbackOne(c); if (fb) c.pr = fb; }
+    return c;
+  } catch (err) {
+    toast('No se pudo cargar la carta: ' + err.message, 'err');
+    return null;
+  } finally { if (btn) { btn.innerHTML = txt; btn.disabled = false; } }
+}
+
+/* Respaldo: si TCGdex no trae precio, se lo pedimos a pokemontcg.io. */
+async function fallbackOne(c) {
+  if (c.cat === 'ja') return null;                 // esa base solo tiene cartas inglesas
+  try {
+    const j = await pkm('/cards?q=' + encodeURIComponent('id:' + pkmIdOf(c)) + '&select=id,cardmarket');
+    const d = j && j.data && j.data[0];
+    if (d && d.cardmarket && d.cardmarket.prices) return prFromPkm(d.cardmarket.prices, d.cardmarket.updatedAt);
+  } catch (e) {}
+  return null;
+}
+
+/* ============================================================
+   CAMPO DE IMAGEN (lo usan las dos fichas: la del catálogo y la manual)
+   Acepta una foto tuya, que se reduce antes de guardarla, o un enlace
+   directo a una imagen.
+   ============================================================ */
+function campoImagenHTML(id, img) {
+  const esFoto = !!(img && img.slice(0, 5) === 'data:');
+  return '<label class="f">Imagen de la carta</label>' +
+    '<div class="row" style="gap:8px">' +
+      '<button class="btn pri" id="' + id + 'Btn" type="button">📷 Usar mi foto</button>' +
+      '<input class="inp grow" id="' + id + 'Url" placeholder="…o pega el enlace directo a una imagen" value="' + esc(esFoto ? '' : (img || '')) + '">' +
+      (esFoto ? '<button class="btn danger" id="' + id + 'Del" type="button">Quitar foto</button>' : '') +
+      '<input type="file" id="' + id + 'File" accept="image/*" hidden>' +
+    '</div>' +
+    '<div style="font-size:11.5px;color:var(--tx3);margin-top:5px" id="' + id + 'Info">' +
+      (esFoto ? 'Estás usando una foto tuya.' : 'Si la carta no trae foto, hazle una o descárgala y súbela con el botón: se guarda reducida.') +
+    '</div>';
+}
+
+function campoImagenWire(id, img, etiquetaGuardar) {
+  let foto = (img && img.slice(0, 5) === 'data:') ? img : null;
+  let quitada = false;
+  const info = () => $('#' + id + 'Info');
+
+  /* El error más fácil: pegar el enlace de una página (Drive, Dropbox...)
+     creyendo que es el de la imagen. Avisamos en vez de fallar callando. */
+  const revisar = () => {
+    const v = $('#' + id + 'Url').value.trim();
+    if (!v) { info().innerHTML = foto ? 'Estás usando una foto tuya.' : 'Si la carta no trae foto, hazle una o descárgala y súbela con el botón.'; return; }
+    const esPagina = /drive\.google\.com|docs\.google\.com|dropbox\.com\/s\/|photos\.app\.goo\.gl|onedrive\.live\.com|imgur\.com\/(a|gallery)\//i.test(v);
+    const pareceImagen = /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(v);
+    if (esPagina) info().innerHTML = '<b style="color:#ff8b7a">Ese enlace es una página, no una imagen.</b> Drive y similares sirven un visor, no el archivo, y suelen pedir permiso. Descarga la foto y usa <b>📷 Usar mi foto</b>.';
+    else if (!pareceImagen) info().innerHTML = 'Ese enlace no parece apuntar a una imagen (suelen acabar en .jpg o .png). Si no se ve, usa <b>📷 Usar mi foto</b>.';
+    else info().innerHTML = 'Enlace con pinta de imagen. Si luego no carga, ese sitio no permite enlazarla: usa <b>📷 Usar mi foto</b>.';
+  };
+  $('#' + id + 'Url').addEventListener('input', revisar);
+
+  $('#' + id + 'Btn').onclick = () => $('#' + id + 'File').click();
+  const btnQuitar = $('#' + id + 'Del');
+  if (btnQuitar) btnQuitar.onclick = () => {
+    foto = null; quitada = true;
+    $('#' + id + 'Url').value = '';
+    info().textContent = 'Foto quitada. Al guardar, la carta se queda sin imagen.';
+    btnQuitar.remove();
+  };
+
+  $('#' + id + 'File').onchange = ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    const kb = Math.round(f.size / 1024);
+    const ext = (f.name.split('.').pop() || '').toUpperCase();
+    const ficha = '<br><span style="color:var(--tx3)">Archivo: ' + esc(f.name) + ' · ' + (f.type || 'tipo desconocido') + ' · ' + kb + ' KB</span>';
+    info().textContent = 'Procesando la foto…';
+    const fr = new FileReader();
+    fr.onerror = () => { info().innerHTML = '<b style="color:#ff8b7a">No he podido leer ese archivo.</b>' + ficha; };
+    fr.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const W = 280, H = Math.max(1, Math.round(im.height * (W / im.width)));
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        cv.getContext('2d').drawImage(im, 0, 0, W, H);
+        foto = cv.toDataURL('image/jpeg', 0.72);
+        quitada = false;
+        $('#' + id + 'Url').value = '';
+        info().innerHTML = '✅ Foto lista (' + Math.round(foto.length / 1024) + ' KB). Se guardará al pulsar <b>' + esc(etiquetaGuardar) + '</b>.';
+      };
+      im.onerror = () => {
+        const heic = /heic|heif/i.test(f.type) || /^(HEIC|HEIF)$/.test(ext);
+        const html = /html?$/i.test(ext) || /html/i.test(f.type);
+        info().innerHTML = '<b style="color:#ff8b7a">El navegador no sabe abrir ese archivo.</b> ' +
+          (heic ? 'Es una foto de iPhone en formato HEIC, que Chrome no entiende: ábrela con Fotos de Windows y usa <b>Guardar como</b> → JPG.'
+          : html ? 'Es una página web guardada, no una imagen: lo que descargaste de Drive fue la página, no el archivo. En Drive, pulsa los tres puntos y elige <b>Descargar</b>.'
+          : 'Prueba a abrirlo con Fotos de Windows y guardarlo como JPG o PNG.') + ficha;
+      };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+    ev.target.value = '';
+  };
+
+  return {
+    valor: () => {
+      if (foto) return foto;
+      const u = $('#' + id + 'Url').value.trim();
+      if (u) return u;
+      return quitada ? '' : '';
+    }
+  };
+}
+
+/* ============================================================
+   MODAL AÑADIR / EDITAR
+   ============================================================ */
+function openModal(existing, card) {
+  /* El idioma por defecto sale del catálogo donde la has buscado: si buscas
+     en inglés, la carta es inglesa. */
+  const base = existing || Object.assign({}, card, {
+    qty: 1, variant: 'normal', cond: 'NM',
+    lang: IDIOMA_DE_CAT[(card && card.cat) || S.cfg.cat] || 'ES',
+    buy: '', notes: ''
+  });
+  const isEdit = !!existing;
+  const opt = (o, sel) => Object.keys(o).map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
+  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+  const big = imgUrl(base.img, 'high');
+
+  $('#modalHost').innerHTML =
+  '<div class="ovl" id="ovl"><div class="modal">' +
+    '<div class="mhead"><h3>' + (isEdit ? 'Editar carta' : 'Añadir a mi colección') + '</h3><button class="x" id="mX">×</button></div>' +
+    '<div class="mbody">' +
+      '<div style="display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap">' +
+        (big ? '<img src="' + esc(big) + '" alt="" style="width:130px;border-radius:8px;flex:0 0 auto" onerror="this.style.display=\'none\'">' : '') +
+        '<div style="flex:1;min-width:190px">' +
+          '<div style="font-size:18px;font-weight:800">' + esc(base.name) + '</div>' +
+          '<div style="color:var(--tx2);font-size:13px;margin-bottom:8px">' + esc(base.setName) + ' · Nº ' + esc(base.number) + ' · ' + esc(base.rarity) + '</div>' +
+          priceBoxHTML(base) +
+        '</div>' +
+      '</div>' +
+      '<div class="fgrid">' +
+        '<div><label class="f">Cantidad</label><input class="inp" id="mQty" type="number" min="1" step="1" value="' + (base.qty || 1) + '"></div>' +
+        '<div><label class="f">Variante</label><select class="inp" id="mVar">' + opt(VARS, base.variant) + '</select></div>' +
+        '<div><label class="f">Estado</label><select class="inp" id="mCond">' + opt(CONDS, base.cond) + '</select></div>' +
+        '<div><label class="f">Idioma</label><select class="inp" id="mLang">' + optArr(LANGS, base.lang) + '</select></div>' +
+        '<div><label class="f">Precio que pagaste (€/ud)</label><input class="inp" id="mBuy" type="number" min="0" step="0.01" placeholder="opcional" value="' + esc(base.buy == null ? '' : base.buy) + '"></div>' +
+        '<div><label class="f">Graduación (opcional)</label><input class="inp" id="mGrade" placeholder="PSA 10, CGC 9.5..." value="' + esc(base.grade || '') + '"></div>' +
+        '<div><label class="f">' + (base.manual ? 'Valor estimado (€/ud)' : 'Precio que le pongo yo (€/ud)') + '</label>' +
+          '<input class="inp" id="mMp" type="number" min="0" step="0.01" placeholder="' + (base.manual ? 'lo pones tú' : 'dejar vacío = automático') + '" value="' + esc(base.mp == null ? '' : base.mp) + '"></div>' +
+      '</div>' +
+      '<div style="margin-top:12px"><label class="f">Notas</label><input class="inp" id="mNotes" placeholder="Dónde la guardas, con quién la cambiaste..." value="' + esc(base.notes || '') + '"></div>' +
+      '<div style="margin-top:12px">' + campoImagenHTML('mI', base.img) + '</div>' +
+      '<div class="note" id="mPrev"></div>' +
+    '</div>' +
+    '<div class="mfoot">' +
+      '<a class="btn" href="' + esc(cmSearchUrl(base)) + '" target="_blank" rel="noopener" style="margin-right:auto;text-decoration:none">Buscar en Cardmarket ↗</a>' +
+      '<button class="btn" id="mCancel">Cancelar</button>' +
+      '<button class="btn pri" id="mSave">' + (isEdit ? 'Guardar cambios' : 'Añadir') + '</button>' +
+    '</div>' +
+  '</div></div>';
+
+  const upd = () => {
+    const tmp = Object.assign({}, base, {
+      variant: $('#mVar').value, cond: $('#mCond').value,
+      qty: Math.max(1, parseInt($('#mQty').value, 10) || 1),
+      mp: $('#mMp') ? $('#mMp').value : base.mp
+    });
+    const u = unitPrice(tmp);
+    const pm = precioManual(tmp);
+    const mandaElTuyo = pm != null && pm > 0;
+    $('#mPrev').innerHTML = '<b>Valor estimado:</b> ' + eur(u) + ' por unidad · <b>' + eur(u * tmp.qty) + '</b> en total' +
+      (base.manual || mandaElTuyo
+        ? ' <span style="color:var(--tx3)">(precio puesto por ti: manda sobre el automático y no se actualiza solo)</span>'
+        : (S.cfg.useCond ? ' <span style="color:var(--tx3)">(incluye el ajuste por estado ×' + (S.cfg.cond[tmp.cond] == null ? 1 : S.cfg.cond[tmp.cond]) + ')</span>' : ''));
+  };
+  ['mVar','mCond','mQty','mMp'].forEach(id => { const el = $('#' + id); if (el) el.addEventListener('input', upd); });
+  upd();
+
+  const imagen = campoImagenWire('mI', base.img, isEdit ? 'Guardar cambios' : 'Añadir');
+
+  const close = () => { $('#modalHost').innerHTML = ''; };
+  $('#mX').onclick = close; $('#mCancel').onclick = close;
+  $('#ovl').onclick = e => { if (e.target.id === 'ovl') close(); };
+
+  $('#mSave').onclick = () => {
+    const data = {
+      qty: Math.max(1, parseInt($('#mQty').value, 10) || 1),
+      variant: $('#mVar').value, cond: $('#mCond').value, lang: $('#mLang').value,
+      buy: $('#mBuy').value === '' ? '' : Number($('#mBuy').value),
+      grade: $('#mGrade').value.trim(), notes: $('#mNotes').value.trim()
+    };
+    /* Vacío = sin precio propio, vuelve a mandar el automático. */
+    data.mp = $('#mMp').value === '' ? '' : Number($('#mMp').value);
+
+    data.img = imagen.valor();
+
+    if (isEdit) { Object.assign(existing, data); toast('Cambios guardados', 'ok'); }
+    else {
+      const dup = S.items.find(x => x.id === base.id && x.variant === data.variant && x.cond === data.cond && x.lang === data.lang && (x.grade || '') === data.grade);
+      if (dup) { dup.qty = (dup.qty || 1) + data.qty; toast('Ya la tenías: ahora tienes ' + dup.qty, 'ok'); }
+      else {
+        S.items.push(Object.assign({
+          uid: uid(), id: base.id, cat: base.cat, name: base.name,
+          setId: base.setId, setName: base.setName, series: base.series,
+          number: base.number, rarity: base.rarity, img: base.img, pr: base.pr,
+          added: new Date().toISOString()
+        }, data));
+        toast('«' + base.name + '» añadida a tu colección', 'ok');
+      }
+    }
+    save(); close(); renderCollection();
+    if (searchCards.length) renderSearchResults();   // refresca el «ya tienes N»
+  };
+}
+
+function priceBoxHTML(c) {
+  if (c.manual) return '<div style="background:#0e141c;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">Carta añadida a mano: <b>el valor lo pones tú</b> en el campo de abajo.</div>';
+  const p = c.pr;
+  if (!p) return '<div style="background:#2a1f14;border:1px solid #5a4322;border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">' +
+    'Ninguna fuente cotiza esta carta (pasa mucho con las japonesas: existen en Cardmarket, pero el catálogo no las tiene enlazadas).<br>' +
+    'Míralas con <b>Buscar en Cardmarket</b> aquí abajo y escribe el precio en <b>«Precio que le pongo yo»</b>.</div>';
+  const rows = [['Tendencia', p.trend], ['Media de venta', p.avg], ['Más bajo', p.low], ['Media 30 días', p.avg30]];
+  if (p.rtrend > 0) rows.push(['Reverse (tendencia)', p.rtrend]);
+  return '<div style="background:#0e141c;border:1px solid var(--line);border-radius:8px;padding:9px 11px">' +
+    rows.map(r => '<div class="srow"><span style="color:var(--tx2);font-size:12px">' + r[0] + '</span><b class="num">' + (r[1] > 0 ? eur(r[1]) : '—') + '</b></div>').join('') +
+    '<div style="font-size:11px;color:var(--tx3);margin-top:7px">Cardmarket vía ' + esc(SRC_NAME[p.src] || p.src) + ' · ' + esc(fmtDate(p.updated)) + '</div></div>';
+}
+
+/* ============================================================
+   ALTA MANUAL
+   ============================================================ */
+function openManual() {
+  const opt = (o, sel) => Object.keys(o).map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
+  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+
+  $('#modalHost').innerHTML =
+  '<div class="ovl" id="ovl"><div class="modal">' +
+    '<div class="mhead"><h3>Añadir una carta a mano</h3><button class="x" id="mX">×</button></div>' +
+    '<div class="mbody">' +
+      '<div class="note">Para lo que ninguna fuente tenga catalogado: promos raras, cartas de otros idiomas o expansiones recién salidas. Lo único imprescindible es el nombre.</div>' +
+      '<div class="fgrid">' +
+        '<div><label class="f">Nombre *</label><input class="inp" id="xName" placeholder="Groudon"></div>' +
+        '<div><label class="f">Expansión</label><input class="inp" id="xSet" placeholder="Nombre de la expansión"></div>' +
+        '<div><label class="f">Número</label><input class="inp" id="xNum" placeholder="084/086"></div>' +
+        '<div><label class="f">Rareza</label><input class="inp" id="xRar" placeholder="Art Rare, SR, promo..."></div>' +
+        '<div><label class="f">Cantidad</label><input class="inp" id="xQty" type="number" min="1" step="1" value="1"></div>' +
+        '<div><label class="f">Variante</label><select class="inp" id="xVar">' + opt(VARS, 'normal') + '</select></div>' +
+        '<div><label class="f">Estado</label><select class="inp" id="xCond">' + opt(CONDS, 'NM') + '</select></div>' +
+        '<div><label class="f">Idioma</label><select class="inp" id="xLang">' + optArr(LANGS, IDIOMA_DE_CAT[S.cfg.cat] || 'ES') + '</select></div>' +
+        '<div><label class="f">Valor estimado (€/ud)</label><input class="inp" id="xMp" type="number" min="0" step="0.01" placeholder="lo pones tú"></div>' +
+        '<div><label class="f">Precio que pagaste (€/ud)</label><input class="inp" id="xBuy" type="number" min="0" step="0.01" placeholder="opcional"></div>' +
+      '</div>' +
+      '<div style="margin-top:12px">' + campoImagenHTML('xI', '') + '</div>' +
+      '<div style="margin-top:12px"><label class="f">Notas</label><input class="inp" id="xNotes" placeholder="Dónde la guardas, de dónde salió..."></div>' +
+    '</div>' +
+    '<div class="mfoot"><button class="btn" id="mCancel">Cancelar</button><button class="btn pri" id="mSave">Añadir</button></div>' +
+  '</div></div>';
+
+  const close = () => { $('#modalHost').innerHTML = ''; };
+  $('#mX').onclick = close; $('#mCancel').onclick = close;
+  $('#ovl').onclick = e => { if (e.target.id === 'ovl') close(); };
+  const imagen = campoImagenWire('xI', '', 'Añadir');
+  $('#xName').focus();
+
+  $('#mSave').onclick = () => {
+    const name = $('#xName').value.trim();
+    if (!name) { toast('Ponle al menos un nombre', 'err'); $('#xName').focus(); return; }
+    S.items.push({
+      uid: uid(), id: 'manual-' + uid(), manual: true, cat: S.cfg.cat,
+      name: name,
+      setId: '', setName: $('#xSet').value.trim() || 'Añadidas a mano', series: 'Añadidas a mano',
+      number: $('#xNum').value.trim(), rarity: $('#xRar').value.trim() || '—',
+      img: imagen.valor(), pr: null,
+      qty: Math.max(1, parseInt($('#xQty').value, 10) || 1),
+      variant: $('#xVar').value, cond: $('#xCond').value, lang: $('#xLang').value,
+      mp: $('#xMp').value === '' ? 0 : Number($('#xMp').value),
+      buy: $('#xBuy').value === '' ? '' : Number($('#xBuy').value),
+      grade: '', notes: $('#xNotes').value.trim(),
+      added: new Date().toISOString()
+    });
+    save(); close(); renderCollection();
+    toast('«' + name + '» añadida a mano', 'ok');
+  };
+}
+$('#btnManual').onclick = openManual;
+
+/* ============================================================
+   BUSCAR Y AÑADIR
+   ============================================================ */
+/* El número va impreso como 084/086, pero cada base lo guarda a su manera:
+   TCGdex usa "084" en unas expansiones y "84" en otras. Probamos las formas. */
+function numCandidates(raw) {
+  let n = String(raw || '').trim();
+  if (!n) return [];
+  n = n.split('/')[0].replace(/[^A-Za-z0-9-]/g, '');
+  if (!n) return [];
+  const out = [n];
+  if (/^[0-9]+$/.test(n)) {
+    const stripped = String(parseInt(n, 10));
+    if (out.indexOf(stripped) === -1) out.push(stripped);
+    const padded = stripped.padStart(3, '0');
+    if (out.indexOf(padded) === -1) out.push(padded);
+  }
+  return out;
+}
+
+/* El filtro "set=" de TCGdex casa por trozo de texto: pedir M6 devuelve
+   también SM6, SM6a y SM6b. Afinamos aquí por el prefijo exacto del id. */
+function exactSet(list, setId) {
+  if (!setId) return list;
+  const p = String(setId).toLowerCase() + '-';
+  return list.filter(c => String(c.id || '').toLowerCase().indexOf(p) === 0);
+}
+
+/* Resultados de la última búsqueda, para poder reordenar y filtrar sin
+   volver a pedir nada a la red. */
+let searchCards = [];
+let searchMeta = { total: 0, cat: 'es', aviso: '' };
+const searchOpts = { orden: 'set-desc', rareza: '', tengo: '', min: '' };
+
+/* Cuánto se ha movido el precio respecto a la media del último mes.
+   Es lo más cerca que puedo estar de "lo que está de moda": no hay ninguna
+   fuente pública que diga cuántas unidades se venden. */
+function variacion(c) {
+  const p = c.pr;
+  if (!p) return null;
+  const base = p.avg30, ahora = p.trend || p.avg;
+  if (!(base > 0) || !(ahora > 0)) return null;
+  return ((ahora - base) / base) * 100;
+}
+
+function renderSearchResults() {
+  const out = $('#searchOut');
+  const cat = searchMeta.cat;
+
+  const rarezas = {};
+  searchCards.forEach(c => { if (c.rarity && c.rarity !== '—') rarezas[c.rarity] = 1; });
+
+  const owned = {};
+  S.items.forEach(i => { owned[i.id] = (owned[i.id] || 0) + (i.qty || 1); });
+
+  const min = parseFloat(String(searchOpts.min).replace(',', '.'));
+  let lista = searchCards.filter(c => {
+    if (searchOpts.rareza && c.rarity !== searchOpts.rareza) return false;
+    if (searchOpts.tengo === 'si' && !owned[c.id]) return false;
+    if (searchOpts.tengo === 'no' && owned[c.id]) return false;
+    if (min > 0 && !(basePrice(c.pr, 'normal') >= min)) return false;
+    return true;
+  });
+
+  const fecha = c => { const s = setInfo(cat, c.setId); return (s && s.date) || ''; };
+  const orden = {
+    /* Las que no tienen precio van siempre al final, también cuando ordenas
+       de menor a mayor: si no, ocuparían todos los primeros puestos. */
+    'precio-desc': (a, b) => basePrice(b.pr, 'normal') - basePrice(a.pr, 'normal'),
+    'precio-asc':  (a, b) => (basePrice(a.pr, 'normal') || Infinity) - (basePrice(b.pr, 'normal') || Infinity),
+    'sube':        (a, b) => (variacion(b) == null ? -1e9 : variacion(b)) - (variacion(a) == null ? -1e9 : variacion(a)),
+    'baja':        (a, b) => (variacion(a) == null ? 1e9 : variacion(a)) - (variacion(b) == null ? 1e9 : variacion(b)),
+    'set-desc':    (a, b) => fecha(b).localeCompare(fecha(a)) || (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0),
+    'set-asc':     (a, b) => fecha(a).localeCompare(fecha(b)) || (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0),
+    'nombre':      (a, b) => String(a.alt || a.name).localeCompare(String(b.alt || b.name)),
+    'numero':      (a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0)
+  }[searchOpts.orden];
+  lista = lista.slice().sort(orden);
+
+  const opt = (v, t) => '<option value="' + v + '"' + (searchOpts.orden === v ? ' selected' : '') + '>' + t + '</option>';
+  const barra =
+    '<div class="row" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">' +
+      '<div style="min-width:210px"><label class="f">Ordenar por</label><select class="inp" id="rOrder">' +
+        opt('set-desc', 'Expansión más reciente') +
+        opt('precio-desc', 'Precio: de mayor a menor') +
+        opt('precio-asc', 'Precio: de menor a mayor') +
+        opt('sube', 'Las que más suben (vs. mes)') +
+        opt('baja', 'Las que más bajan (vs. mes)') +
+        opt('set-asc', 'Expansión más antigua') +
+        opt('nombre', 'Nombre (A-Z)') +
+        opt('numero', 'Número de carta') +
+      '</select></div>' +
+      '<div style="min-width:150px"><label class="f">Rareza</label><select class="inp" id="rRar">' +
+        '<option value="">Todas</option>' +
+        Object.keys(rarezas).sort().map(r => '<option value="' + esc(r) + '"' + (searchOpts.rareza === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') +
+      '</select></div>' +
+      '<div style="min-width:150px"><label class="f">En mi colección</label><select class="inp" id="rOwn">' +
+        '<option value="">Todas</option>' +
+        '<option value="no"' + (searchOpts.tengo === 'no' ? ' selected' : '') + '>Las que me faltan</option>' +
+        '<option value="si"' + (searchOpts.tengo === 'si' ? ' selected' : '') + '>Las que ya tengo</option>' +
+      '</select></div>' +
+      '<div style="min-width:120px"><label class="f">Precio mínimo €</label>' +
+        '<input class="inp" id="rMin" type="number" min="0" step="0.5" placeholder="sin mínimo" value="' + esc(searchOpts.min) + '"></div>' +
+      '<div><button class="btn" id="rClear">Limpiar</button></div>' +
+    '</div>';
+
+  const resumen = '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">' +
+    plu(lista.length, 'carta', 'cartas') +
+    (lista.length !== searchCards.length ? ' de ' + searchCards.length + ' encontradas' : '') +
+    (searchMeta.total > searchCards.length ? ' · la búsqueda daba ' + searchMeta.total + ', se han traído las ' + searchCards.length + ' primeras' : '') +
+    ' · catálogo ' + esc(CATS[cat]) +
+    (searchMeta.traducido ? ' · buscado como <b style="color:var(--tx)">' + esc(searchMeta.traducido) + '</b>' : '') +
+    '</div>';
+
+  const muestraVar = searchOpts.orden === 'sube' || searchOpts.orden === 'baja';
+
+  out.innerHTML =
+    (searchMeta.aviso ? '<div class="note">' + searchMeta.aviso + '</div>' : '') +
+    barra + resumen +
+    (lista.length
+      ? '<div class="grid">' + lista.map(c => {
+          const tengo = owned[c.id] || 0;
+          const v = variacion(c);
+          const precio = basePrice(c.pr, 'normal');
+          let txt = precio ? eur(precio) + ' <small>/ud</small>' : '<small style="color:var(--tx3)">sin precio</small>';
+          if (muestraVar && v != null) {
+            txt += ' <small class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v >= 0 ? '▲' : '▼') + Math.abs(v).toFixed(0) + '%</small>';
+          }
+          return cardHTML(c, {
+            owned: tengo > 0,
+            sub: tengo ? 'Ya tienes ' + plu(tengo, 'copia', 'copias') : '',
+            priceText: txt,
+            actions: '<button class="btn sm pri" data-add="' + esc(c.id) + '" data-cat="' + esc(cat) + '">+ Añadir</button>' +
+                     '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(cat) + '" title="A la lista de deseos">⭐</button>'
+          });
+        }).join('') + '</div>'
+      : '<div class="empty"><div class="big">🔎</div>Ninguna carta pasa esos filtros.</div>');
+
+  $('#rOrder').onchange = e => { searchOpts.orden = e.target.value; renderSearchResults(); };
+  $('#rRar').onchange   = e => { searchOpts.rareza = e.target.value; renderSearchResults(); };
+  $('#rOwn').onchange   = e => { searchOpts.tengo = e.target.value; renderSearchResults(); };
+  $('#rMin').oninput    = e => { searchOpts.min = e.target.value; renderSearchResults(); };
+  $('#rClear').onclick  = () => { searchOpts.orden = 'set-desc'; searchOpts.rareza = ''; searchOpts.tengo = ''; searchOpts.min = ''; renderSearchResults(); };
+}
+
+let lastSearch = null;
+async function doSearch() {
+  const name = $('#qName').value.trim();
+  const setId = $('#qSet').value;
+  const numRaw = $('#qNum').value.trim();
+  const cat = S.cfg.cat;
+  if (!name && !setId && !numRaw) { toast('Escribe al menos un nombre, una expansión o un número', 'err'); return; }
+
+  const out = $('#searchOut');
+  out.innerHTML = '<div class="empty"><div class="big">⏳</div>Buscando…</div>';
+  progress(30);
+  lastSearch = { name: name, setId: setId, numRaw: numRaw, cat: cat };
+
+  /* En el catálogo japonés los nombres están en japonés. Si escribes en
+     nuestro alfabeto, traducimos: "Groudon" -> グラードン. */
+  let nameQ = name, traducido = '';
+  if (cat === 'ja' && name && tieneLatin(name)) {
+    const ja = aJapones(name);
+    if (ja) { nameQ = ja; traducido = ja; }
+  }
+
+  const build = num => {
+    const q = [];
+    if (nameQ) q.push('name=like:' + encodeURIComponent(nameQ));
+    if (setId) q.push('set=' + encodeURIComponent(setId));
+    if (num) q.push('localId=' + encodeURIComponent(num));
+    return '/' + cat + '/cards?' + q.join('&');
+  };
+
+  try {
+    let list = [];
+    let aviso = '';
+    const nums = numCandidates(numRaw);
+    if (nums.length) {
+      for (let i = 0; i < nums.length && !list.length; i++) list = exactSet((await tcg(build(nums[i]))) || [], setId);
+      if (!list.length && (name || setId)) {
+        list = exactSet((await tcg(build(''))) || [], setId);
+        if (list.length) aviso = 'Ninguna carta lleva el número <b>' + esc(nums[0]) + '</b> entre esos resultados, así que te muestro todas las demás: localiza la tuya por la imagen.';
+      }
+    } else {
+      list = exactSet((await tcg(build(''))) || [], setId);
+    }
+
+    if (!list.length) {
+      searchCards = [];
+      out.innerHTML = '<div class="empty"><div class="big">🤷</div>No se han encontrado cartas en el catálogo <b>' + esc(CATS[cat]) + '</b>.<br>' +
+        '<span style="font-size:12px">' +
+        (cat === 'ja' && name && tieneLatin(name) && !traducido
+          ? 'En el catálogo japonés los nombres van en japonés y «' + esc(name) + '» no está en el diccionario. Busca por expansión y número, que es lo más fiable.'
+          : 'Prueba con menos palabras, cambia el catálogo de idioma, o añádela a mano.') +
+        '</span></div>';
+      progress(100); setTimeout(() => progress(0), 400);
+      return;
+    }
+
+    /* Para poder ordenar por precio hace falta la ficha de cada carta, así que
+       traemos hasta 150. Por encima de eso avisamos en vez de mentir con un
+       orden calculado sobre un trocito de los resultados. */
+    const TOPE = 150;
+    const total = list.length;
+    const slice = list.slice(0, TOPE);
+    const cards = [];
+    progress(45);
+    out.innerHTML = '<div class="empty"><div class="big">⏳</div>Consultando precios de ' + plu(slice.length, 'carta', 'cartas') + '…</div>';
+    await pool(slice, async c => {
+      try {
+        const d = await tcg('/' + cat + '/cards/' + encodeURIComponent(c.id), 2);
+        if (d) cards.push(normCard(d, cat));
+      } catch (e) {}
+    }, 6, (done, tot) => progress(45 + (done / tot) * 50));
+
+    progress(100);
+    searchCards = cards;
+    searchMeta = { total: total, cat: cat, aviso: aviso, traducido: traducido };
+    renderSearchResults();
+  } catch (e) {
+    progress(100);
+    out.innerHTML = '<div class="empty"><div class="big">⚠️</div>' + esc(e.message) +
+      '<br><button class="btn" style="margin-top:12px" id="btnRetry">Reintentar</button></div>';
+    const rt = $('#btnRetry'); if (rt) rt.onclick = doSearch;
+  }
+  setTimeout(() => progress(0), 500);
+}
+$('#btnSearch').onclick = doSearch;
+$('#qName').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+$('#qNum').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+$('#qCat').onchange = e => { setCat(e.target.value); if (lastSearch) doSearch(); };
+
+/* ============================================================
+   LISTA DE DESEOS
+   ============================================================ */
+function addWish(c) {
+  if (S.wish.some(w => w.id === c.id)) { toast('Ya está en tu lista de deseos'); return; }
+  S.wish.push(Object.assign({ uid: uid(), qty:1, variant:'normal', cond:'NM', lang:'ES', added:new Date().toISOString() }, c));
+  save(); toast('«' + c.name + '» añadida a deseos', 'ok'); renderWish();
+}
+function renderWish() {
+  $('#wishTiles').innerHTML = [
+    tile('Cartas deseadas', String(S.wish.length), S.wish.length === 1 ? 'carta pendiente' : 'cartas pendientes'),
+    tile('Coste estimado', eur(sumValue(S.wish)), 'Si las compraras hoy')
+  ].join('');
+  const out = $('#wishOut');
+  if (!S.wish.length) {
+    out.innerHTML = '<div class="empty"><div class="big">⭐</div>Tu lista de deseos está vacía.<br><span style="font-size:12px">Usa el botón ⭐ en los resultados de búsqueda.</span></div>';
+    return;
+  }
+  out.innerHTML = '<div class="grid">' + S.wish.map(w => cardHTML(w, {
+    actions: '<button class="btn sm pri" data-wmove="' + w.uid + '">✓ La tengo</button><button class="btn sm danger" data-wdel="' + w.uid + '">🗑</button>'
+  })).join('') + '</div>';
+}
+
+/* ============================================================
+   EXPLORAR EXPANSIONES
+   ============================================================ */
+let setCards = [];
+async function loadSet() {
+  const id = $('#sSet').value;
+  const cat = S.cfg.cat;
+  if (!id) { toast('Elige una expansión', 'err'); return; }
+  const out = $('#setOut');
+  out.innerHTML = '<div class="empty"><div class="big">⏳</div>Cargando la expansión…</div>';
+  setCards = [];
+  progress(40);
+  try {
+    const s = await tcg('/' + cat + '/sets/' + encodeURIComponent(id));
+    if (!s || !s.cards) throw new Error('Esa expansión no está disponible en este catálogo');
+    setCards = s.cards.map(c => ({
+      id: c.id, cat: cat, name: c.name || '', number: c.localId || '',
+      setId: id, setName: s.name || '', rarity: '', img: c.image || '', pr: null
+    }));
+    progress(100);
+    renderSet();
+  } catch (e) {
+    progress(100);
+    out.innerHTML = '<div class="empty"><div class="big">⚠️</div>' + esc(e.message) + '</div>';
+  }
+  setTimeout(() => progress(0), 400);
+}
+function renderSet() {
+  const owned = {};
+  S.items.forEach(i => { owned[i.id] = (owned[i.id] || 0) + (i.qty || 1); });
+  const have = setCards.filter(c => owned[c.id]).length;
+  const pct = setCards.length ? Math.round(have / setCards.length * 100) : 0;
+  $('#setProgress').innerHTML =
+    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">' +
+    '<b>Tienes ' + have + ' de ' + setCards.length + ' cartas</b><b style="color:var(--acc)">' + pct + '%</b></div>' +
+    '<div class="bar"><i style="width:' + pct + '%"></i></div>';
+
+  const f = $('#sFilter').value;
+  const list = setCards.filter(c => f === 'have' ? owned[c.id] : f === 'miss' ? !owned[c.id] : true);
+  $('#setOut').innerHTML = list.length
+    ? '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">El precio de cada carta se consulta al añadirla, para no lanzar cientos de peticiones de golpe.</div>' +
+      '<div class="grid">' + list.map(c => cardHTML(c, {
+        owned: !!owned[c.id], qty: owned[c.id] || 0,
+        sub: owned[c.id] ? 'En tu colección' : '',
+        priceText: '<small style="color:var(--tx3)">al añadir</small>',
+        actions: '<button class="btn sm ' + (owned[c.id] ? '' : 'pri') + '" data-add="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '">+ Añadir</button>' +
+                 (owned[c.id] ? '' : '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '">⭐</button>')
+      })).join('') + '</div>'
+    : '<div class="empty"><div class="big">✅</div>Nada que mostrar con ese filtro.</div>';
+}
+$('#btnLoadSet').onclick = loadSet;
+$('#sFilter').onchange = () => { if (setCards.length) renderSet(); };
+$('#sCat').onchange = e => setCat(e.target.value);
+
+/* ============================================================
+   ACTUALIZAR PRECIOS
+   Fase 1: TCGdex, una petición por carta en paralelo controlado.
+   Fase 2: las que se queden sin precio, en lotes a pokemontcg.io.
+   ============================================================ */
+async function updatePrices() {
+  const targets = S.items.concat(S.wish).filter(i => !i.manual);
+  if (!targets.length) {
+    toast(S.items.length ? 'Solo tienes cartas añadidas a mano: esas las pones tú.' : 'No tienes cartas registradas todavía');
+    return;
+  }
+  const btn = $('#btnUpdate');
+  btn.disabled = true;
+
+  const byId = {};
+  targets.forEach(i => { (byId[i.cat + '|' + i.id] = byId[i.cat + '|' + i.id] || []).push(i); });
+  const claves = Object.keys(byId);
+
+  let okTcg = 0, sinPrecio = [], fallos = 0;
+
+  btn.textContent = '⟳ Actualizando 0%';
+  await pool(claves, async clave => {
+    const grupo = byId[clave];
+    const ref = grupo[0];
+    try {
+      const d = await tcg('/' + (ref.cat || 'en') + '/cards/' + encodeURIComponent(ref.id), 3);
+      if (!d) { fallos++; return; }
+      const pr = prFromTcgdex(pickCardmarket(d));
+      grupo.forEach(it => {
+        if (!it.img && d.image) it.img = d.image;
+        if (!it.rarity || it.rarity === '—') it.rarity = d.rarity || it.rarity;
+        if (d.set && d.set.name) it.setName = d.set.name;
+      });
+      if (pr) { grupo.forEach(it => { it.pr = pr; }); okTcg++; }
+      else sinPrecio.push(ref);
+    } catch (e) { fallos++; }
+  }, 6, (done, tot) => {
+    const p = (done / tot) * 70;
+    btn.textContent = '⟳ Actualizando ' + Math.round(p) + '%';
+    progress(p);
+  });
+
+  /* Fase 2: respaldo en lotes de 15 (pokemontcg.io admite id:a OR id:b) */
+  let okPkm = 0;
+  const candidatos = sinPrecio.filter(i => i.cat !== 'ja');
+  if (candidatos.length) {
+    const lotes = [];
+    for (let i = 0; i < candidatos.length; i += 15) lotes.push(candidatos.slice(i, i + 15));
+    for (let n = 0; n < lotes.length; n++) {
+      btn.textContent = '⟳ Respaldo ' + Math.round(70 + (n / lotes.length) * 30) + '%';
+      progress(70 + (n / lotes.length) * 30);
+      const mapa = {};
+      lotes[n].forEach(i => { mapa[pkmIdOf(i)] = i; });
+      const q = Object.keys(mapa).map(id => 'id:' + id).join(' OR ');
+      try {
+        const j = await pkm('/cards?q=' + encodeURIComponent(q) + '&pageSize=15&select=id,cardmarket');
+        (j && j.data || []).forEach(d => {
+          const ref = mapa[d.id];
+          if (!ref || !d.cardmarket || !d.cardmarket.prices) return;
+          const pr = prFromPkm(d.cardmarket.prices, d.cardmarket.updatedAt);
+          byId[ref.cat + '|' + ref.id].forEach(it => { it.pr = pr; });
+          okPkm++;
+        });
+      } catch (e) {}
+      if (n < lotes.length - 1) await sleep(200);
+    }
+  }
+
+  const total = sumValue(S.items);
+  const stamp = todayISO();
+  S.lastCheck = new Date().toISOString();
+  S.hist = S.hist.filter(h => h.d !== stamp);
+  S.hist.push({ d: stamp, v: Math.round(total * 100) / 100, n: sumCount(S.items) });
+  S.hist.sort((a, b) => a.d.localeCompare(b.d));
+  if (S.hist.length > 400) S.hist = S.hist.slice(-400);
+
+  save();
+  progress(100); setTimeout(() => progress(0), 500);
+  btn.disabled = false; btn.innerHTML = '⟳ Actualizar precios';
+  renderCollection(); renderWish(); renderStats();
+  if (setCards.length) renderSet();
+
+  /* Cardmarket recalcula una vez al día: si la fuente sigue dando la fecha
+     de ayer, hay que decirlo, o parece que la actualización no ha ido. */
+  const fechasTras = S.items.concat(S.wish).map(i => (i.pr && i.pr.updated) || '').filter(Boolean).sort();
+  const masNueva = fechasTras.length ? fechasTras[fechasTras.length - 1] : '';
+  const hoy = todayISO();
+
+  const sinNada = sinPrecio.length - okPkm;
+  let msg = 'Consultadas ' + plu(okTcg + okPkm, 'carta', 'cartas');
+  if (okPkm) msg += ' (' + okPkm + ' vía respaldo)';
+  msg += ' · ' + eur(total);
+  if (masNueva) {
+    msg += masNueva >= hoy
+      ? ' · precios de hoy'
+      : ' · Cardmarket aún no ha publicado los de hoy: estos son del ' + fmtDate(masNueva);
+  }
+  if (sinNada > 0) msg += ' · ' + plu(sinNada, 'carta sin precio', 'cartas sin precio');
+  if (fallos) msg += ' · ' + plu(fallos, 'fallo de red', 'fallos de red');
+  toast(msg, fallos ? 'err' : 'ok');
+}
+$('#btnUpdate').onclick = updatePrices;
+
+/* ============================================================
+   ESTADÍSTICAS
+   ============================================================ */
+function renderStats() {
+  const all = S.items;
+  const val = sumValue(all), buy = sumBuy(all), diff = val - buy;
+  const avg = all.length ? val / sumCount(all) : 0;
+  const sets = {}, rars = {}, fuentes = {};
+  all.forEach(i => {
+    sets[i.setName || '—'] = (sets[i.setName || '—'] || 0) + lineTotal(i);
+    rars[i.rarity || '—'] = (rars[i.rarity || '—'] || 0) + (i.qty || 1);
+    const f = i.manual ? 'Puesto a mano' : (i.pr ? (SRC_NAME[i.pr.src] || i.pr.src) : 'Sin precio');
+    fuentes[f] = (fuentes[f] || 0) + (i.qty || 1);
+  });
+
+  $('#stTiles').innerHTML = [
+    tile('Valor total', eur(val), 'Referencia ' + (MODES[S.cfg.priceMode] || '')),
+    tile('Cartas', String(sumCount(all)), plu(all.length, 'entrada', 'entradas') + ' · ' + plu(Object.keys(sets).length, 'expansión', 'expansiones')),
+    tile('Valor medio por carta', eur(avg), ''),
+    tile('Invertido', buy ? eur(buy) : '—', buy ? 'Sobre las cartas con precio anotado' : 'Sin datos de compra'),
+    buy ? tile('Ganancia / pérdida', (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg') : ''
+  ].join('');
+
+  const h = S.hist;
+  if (h.length < 2) {
+    $('#stHist').innerHTML = '<div class="empty" style="padding:26px">Necesitas al menos dos actualizaciones de precios en días distintos para ver la evolución.</div>';
+  } else {
+    const W = 760, H = 180, pad = 34;
+    const vs = h.map(x => x.v), mx = Math.max.apply(null, vs), mn = Math.min.apply(null, vs);
+    const span = (mx - mn) || 1;
+    const px = i => pad + (i / (h.length - 1)) * (W - pad - 10);
+    const py = v => H - 26 - ((v - mn) / span) * (H - 50);
+    const pts = h.map((x, i) => px(i) + ',' + py(x.v)).join(' ');
+    const first = h[0].v, lastv = h[h.length - 1].v, chg = lastv - first;
+    $('#stHist').innerHTML =
+      '<div style="margin-bottom:10px"><b style="font-size:20px">' + eur(lastv) + '</b> ' +
+      '<span class="' + (chg >= 0 ? 'pos' : 'neg') + '" style="font-weight:700">' + (chg >= 0 ? '+' : '') + eur(chg) +
+      ' (' + (first ? ((chg / first) * 100).toFixed(1) : '0') + '%)</span> <span style="color:var(--tx3);font-size:12px">desde ' + fmtDate(h[0].d) + '</span></div>' +
+      '<div style="overflow-x:auto"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;min-width:420px;height:auto">' +
+      '<polyline points="' + pts + '" fill="none" stroke="#ffcb05" stroke-width="2.5" stroke-linejoin="round"/>' +
+      h.map((x, i) => '<circle cx="' + px(i) + '" cy="' + py(x.v) + '" r="3" fill="#ffcb05"><title>' + fmtDate(x.d) + ': ' + eur(x.v) + '</title></circle>').join('') +
+      '<text x="4" y="14" fill="#6b7889" font-size="11">' + eur(mx) + '</text>' +
+      '<text x="4" y="' + (H - 6) + '" fill="#6b7889" font-size="11">' + eur(mn) + '</text>' +
+      '</svg></div>';
+  }
+
+  const top = all.slice().sort((a, b) => unitPrice(b) - unitPrice(a)).slice(0, 15);
+  $('#stTop').innerHTML = top.length
+    ? '<div class="tblwrap"><table style="min-width:640px"><thead><tr><th>#</th><th></th><th>Carta</th><th>Expansión</th><th>Var.</th><th class="num">Cant.</th><th class="num">Ud.</th><th class="num">Total</th></tr></thead><tbody>' +
+      top.map((i, n) => '<tr><td style="color:var(--tx3)">' + (n + 1) + '</td>' +
+        '<td>' + (imgUrl(i.img, 'low') ? '<img class="tmini" src="' + esc(imgUrl(i.img, 'low')) + '" loading="lazy" alt="">' : '') + '</td>' +
+        '<td><b>' + esc(i.name) + '</b></td><td style="color:var(--tx2)">' + esc(i.setName) + '</td>' +
+        '<td><span class="chip">' + esc(VARS[i.variant] || i.variant) + '</span></td>' +
+        '<td class="num">' + (i.qty || 1) + '</td><td class="num">' + eur(unitPrice(i)) + '</td>' +
+        '<td class="num"><b style="color:var(--acc)">' + eur(lineTotal(i)) + '</b></td></tr>').join('') +
+      '</tbody></table></div>'
+    : '<div class="empty" style="padding:26px">Sin cartas todavía.</div>';
+
+  $('#stSets').innerHTML = barsHTML(sets, v => eur(v));
+  $('#stRar').innerHTML = barsHTML(rars, v => plu(v, 'carta', 'cartas'));
+  $('#stSrc').innerHTML = barsHTML(fuentes, v => plu(v, 'carta', 'cartas'));
+}
+function barsHTML(obj, fmt) {
+  const ks = Object.keys(obj).sort((a, b) => obj[b] - obj[a]).slice(0, 18);
+  if (!ks.length) return '<div class="empty" style="padding:26px">Sin datos.</div>';
+  const mx = obj[ks[0]] || 1;
+  return ks.map(k =>
+    '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px">' +
+    '<span>' + esc(k) + '</span><b>' + fmt(obj[k]) + '</b></div>' +
+    '<div class="bar"><i style="width:' + Math.max(2, (obj[k] / mx) * 100) + '%"></i></div></div>').join('');
+}
+
+/* ============================================================
+   AJUSTES
+   ============================================================ */
+function download(name, text, type) {
+  const b = new Blob([text], { type: type || 'application/json;charset=utf-8' });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement('a');
+  a.href = u; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1000);
+}
+$('#btnExportJson').onclick = () => {
+  download('coleccion-pokemon-' + todayISO() + '.json', JSON.stringify(S, null, 2));
+  toast('Copia de seguridad descargada', 'ok');
+};
+$('#btnExportCsv').onclick = () => {
+  const head = ['ID','Nombre','Expansion','Numero','Rareza','Variante','Estado','Idioma','Graduacion','Cantidad','PrecioUnidad_EUR','ValorTotal_EUR','PrecioCompra_EUR','Fuente','Actualizado','Notas'];
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = S.items.map(i => [i.id, i.name, i.setName, i.number, i.rarity, VARS[i.variant] || i.variant, i.cond, i.lang, i.grade || '',
+    i.qty || 1, unitPrice(i).toFixed(2).replace('.', ','), lineTotal(i).toFixed(2).replace('.', ','),
+    i.buy === '' || i.buy == null ? '' : Number(i.buy).toFixed(2).replace('.', ','),
+    i.manual ? 'a mano' : (i.pr ? SRC_NAME[i.pr.src] || '' : ''), i.pr ? fmtDate(i.pr.updated) : '', i.notes || ''].map(q).join(';'));
+  download('coleccion-pokemon-' + todayISO() + '.csv', '﻿' + head.join(';') + '\n' + rows.join('\n'), 'text/csv;charset=utf-8');
+  toast('CSV descargado (ábrelo con Excel)', 'ok');
+};
+$('#btnImport').onclick = () => $('#fileImport').click();
+$('#fileImport').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const o = JSON.parse(r.result);
+      if (!o || !Array.isArray(o.items)) throw new Error('El archivo no tiene el formato esperado');
+      const entrantes = { items: o.items, wish: o.wish || [], hist: [], cfg: DEF.cfg };
+      migrate(entrantes);
+      const mode = S.items.length
+        ? (confirm('Ya tienes ' + plu(S.items.length, 'entrada', 'entradas') + '.\n\nAceptar = FUSIONAR con lo importado\nCancelar = REEMPLAZAR todo por el archivo') ? 'merge' : 'replace')
+        : 'replace';
+      if (mode === 'replace') { S.items = entrantes.items; S.wish = entrantes.wish; S.hist = o.hist || []; }
+      else {
+        entrantes.items.forEach(ni => {
+          const d = S.items.find(x => x.id === ni.id && x.variant === ni.variant && x.cond === ni.cond && x.lang === ni.lang);
+          if (d) d.qty = (d.qty || 1) + (ni.qty || 1);
+          else S.items.push(Object.assign({}, ni, { uid: uid() }));
+        });
+        entrantes.wish.forEach(w => { if (!S.wish.some(x => x.id === w.id)) S.wish.push(Object.assign({}, w, { uid: uid() })); });
+      }
+      save(); syncSettingsUI(); renderCollection(); renderWish(); renderStats();
+      toast('Importadas ' + plu(entrantes.items.length, 'entrada', 'entradas'), 'ok');
+    } catch (err) { toast('No se pudo importar: ' + err.message, 'err'); }
+    e.target.value = '';
+  };
+  r.readAsText(f);
+};
+$('#btnWipe').onclick = () => {
+  if (!confirm('Se borrará TODA tu colección de este navegador. ¿Seguro?')) return;
+  if (!confirm('Última confirmación: ¿has exportado una copia? Esto no se puede deshacer.')) return;
+  S = JSON.parse(JSON.stringify(DEF)); save(); syncSettingsUI(); renderCollection(); renderWish(); renderStats();
+  toast('Colección borrada');
+};
+$('#setPriceMode').onchange = () => { S.cfg.priceMode = $('#setPriceMode').value; save(); renderCollection(); renderStats(); renderWish(); toast('Referencia de precio: ' + MODES[S.cfg.priceMode]); };
+$('#setUseCond').onchange = () => { S.cfg.useCond = Number($('#setUseCond').value); save(); renderCollection(); renderStats(); };
+$('#btnSaveKey').onclick = () => { S.cfg.apiKey = $('#setApiKey').value.trim(); save(); toast(S.cfg.apiKey ? 'Clave guardada' : 'Clave eliminada', 'ok'); };
+
+function syncSettingsUI() {
+  $('#setPriceMode').innerHTML = Object.keys(MODES).map(k =>
+    '<option value="' + k + '"' + (k === S.cfg.priceMode ? ' selected' : '') + '>' + esc(MODES[k]) + (k === 'trend' ? ' — recomendado' : '') + '</option>').join('');
+  $('#setUseCond').value = String(S.cfg.useCond);
+  $('#setApiKey').value = S.cfg.apiKey || '';
+  $('#condGrid').innerHTML = Object.keys(CONDS).map(k =>
+    '<div><label class="f">' + esc(CONDS[k]) + '</label>' +
+    '<input class="inp" type="number" step="0.01" min="0" max="3" data-cond="' + k + '" value="' + (S.cfg.cond[k] == null ? 1 : S.cfg.cond[k]) + '"></div>').join('');
+  $$('[data-cond]').forEach(el => el.onchange = () => {
+    S.cfg.cond[el.dataset.cond] = Number(el.value) || 0;
+    save(); renderCollection(); renderStats();
+  });
+  let medidor = '';
+  if (storageOK) {
+    try {
+      const bytes = (localStorage.getItem(KEY) || '').length * 2;      // UTF-16
+      const mb = bytes / 1048576;
+      const fotos = S.items.filter(i => i.img && i.img.slice(0, 5) === 'data:').length;
+      const pct = Math.min(100, Math.round((mb / 5) * 100));
+      medidor = '<div style="margin-top:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">' +
+        '<span>Espacio usado' + (fotos ? ' · ' + plu(fotos, 'foto tuya', 'fotos tuyas') : '') + '</span>' +
+        '<b>' + mb.toFixed(2) + ' MB de ~5 MB</b></div><div class="bar"><i style="width:' + Math.max(1, pct) + '%"></i></div></div>';
+    } catch (e) {}
+  }
+  $('#storeInfo').innerHTML = (storageOK
+    ? 'Guardado automáticamente en este navegador. <b>Ojo:</b> si borras los datos de navegación o abres el archivo en otro navegador u ordenador, no verás la colección. La copia JSON es tu seguro.'
+    : '<b style="color:#ff8b7a">⚠ Este navegador no permite guardar datos para archivos locales.</b> Tu colección solo vivirá mientras no cierres la pestaña: exporta el JSON antes de salir e impórtalo al volver.') + medidor;
+
+  const quedan = Math.round((new Date(PKM_EOL) - new Date()) / 864e5);
+  $('#srcInfo').innerHTML =
+    '<b>Fuente principal: TCGdex.</b> Gratis, sin clave, con catálogo en español, inglés y japonés, y precios de Cardmarket actualizados a diario.<br>' +
+    '<b>Respaldo: pokemontcg.io.</b> Solo se consulta cuando TCGdex no tiene precio de una carta, cosa que pasa en unas 90 expansiones inglesas. ' +
+    (quedan > 0
+      ? 'Esta segunda fuente se apaga el 1 de marzo de 2027 (quedan ' + quedan + ' días). Cuando llegue el día, las cartas que dependan de ella conservarán su último precio conocido y el resto seguirá actualizándose con normalidad.'
+      : '<b style="color:#ff8b7a">Esta segunda fuente ya está apagada</b>, así que las cartas que dependían de ella conservan su último precio conocido.');
+}
+
+/* ============================================================
+   ARRANQUE
+   ============================================================ */
+let S = load();
+buildSetIndex();
+(function init() {
+  syncSettingsUI();
+  fillCatSelects();
+  fillSetSelects();
+  renderCollection();
+  renderWish();
+  const viejas = S.items.filter(i => !i.manual && i.pr && i.pr.updated && i.pr.updated !== todayISO());
+  if (viejas.length) toast('Consejo: pulsa «Actualizar precios» para traer los valores de hoy');
+})();

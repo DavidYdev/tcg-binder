@@ -1,0 +1,15 @@
+# Lista blanca: en esta carpeta viven también la colección, fotos y
+# herramientas personales. Todo queda fuera salvo lo que se nombra aquí.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/organizador-pokemon-tcg.html
+!/construir-importacion.js
+!/server.js
+!/cartas.txt
+
+!/herramientas/
+/herramientas/*
+!/herramientas/*.js
+!/herramientas/names.csv

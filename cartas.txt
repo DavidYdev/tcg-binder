@@ -1,0 +1,14 @@
+# Lista de cartas para importar en "Mi Colección Pokémon TCG".
+# Una carta por línea. Solo el identificador es obligatorio.
+#
+#   catalogo:id | cantidad | variante | estado | idioma | compra | notas
+#
+#   catalogo: es | en | ja        (por defecto es)
+#   variante: normal | holo | reverse | 1st | promo
+#   estado:   M | NM | EX | GD | LP | PL | PO   (por defecto NM)
+#
+# Luego:  node construir-importacion.js cartas.txt
+# y el JSON que sale se importa desde Ajustes → Importar JSON.
+
+ja:M6-084 | 1 | holo | NM | JP
+es:xy5-84 | 2 | normal | NM | ES

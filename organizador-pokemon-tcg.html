@@ -1,0 +1,1872 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi Colección Pokémon TCG</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#151b23; --panel:#171e27; --panel2:#1e2632;
+  --line:#2a3441; --line2:#39465a;
+  --tx:#e6edf3; --tx2:#9aa7b8; --tx3:#6b7889;
+  --acc:#ffcb05; --acc2:#3b6ed6; --red:#e8503a; --green:#3fb950; --purple:#a371f7;
+  --r:12px; --r2:8px;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:40px;
+}
+img{max-width:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px}
+
+.wrap{max-width:1360px;margin:0 auto;padding:0 18px}
+header{
+  background:linear-gradient(180deg,#1b2431,#131a23);
+  border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:40;
+}
+.hdr{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 0}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:-.2px}
+.pokeball{width:26px;height:26px;border-radius:50%;background:linear-gradient(180deg,var(--red) 0 46%,#fff 46% 54%,#f0f0f0 54% 100%);border:2px solid #0b0f14;position:relative;flex:0 0 auto}
+.pokeball::after{content:"";position:absolute;inset:0;margin:auto;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #0b0f14}
+.hdr-spacer{flex:1}
+.hdr-stat{text-align:right;line-height:1.2}
+.hdr-stat b{display:block;font-size:17px;color:var(--acc)}
+.hdr-stat span{font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.6px}
+
+nav.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{
+  background:none;border:0;border-bottom:2px solid transparent;
+  padding:10px 14px;color:var(--tx2);font-weight:600;white-space:nowrap;border-radius:6px 6px 0 0;
+}
+nav.tabs button:hover{color:var(--tx);background:#ffffff08}
+nav.tabs button.on{color:var(--acc);border-bottom-color:var(--acc)}
+
+main{padding-top:20px}
+section.view{display:none}
+section.view.on{display:block}
+
+.btn{
+  background:var(--panel2);border:1px solid var(--line2);border-radius:var(--r2);
+  padding:8px 13px;font-weight:600;transition:.13s;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{background:#2a3543;border-color:#4b5b72}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#1a1300}
+.btn.pri:hover{background:#ffd633;border-color:#ffd633}
+.btn.blue{background:var(--acc2);border-color:var(--acc2);color:#fff}
+.btn.blue:hover{background:#4a7ce4}
+.btn.danger{color:#ff8b7a;border-color:#57302b}
+.btn.danger:hover{background:#3a1f1b}
+.btn.sm{padding:5px 9px;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.inp,select.inp,textarea.inp{
+  background:#0e141c;border:1px solid var(--line2);color:var(--tx);
+  border-radius:var(--r2);padding:8px 11px;width:100%;outline:none;
+}
+.inp:focus{border-color:var(--acc2);box-shadow:0 0 0 2px #3b6ed633}
+label.f{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--tx2);margin:0 0 5px;font-weight:700}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.grow{flex:1;min-width:150px}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.panel + .panel{margin-top:16px}
+h2.t{margin:0 0 4px;font-size:16px}
+p.sub{margin:0 0 14px;color:var(--tx2);font-size:13px}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--tx2);font-weight:700}
+.tile .v{font-size:23px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+.tile .n{font-size:12px;color:var(--tx3);margin-top:2px}
+.pos{color:var(--green)} .neg{color:var(--red)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;position:relative;transition:.15s;display:flex;flex-direction:column;
+}
+.card:hover{border-color:var(--line2);transform:translateY(-2px)}
+.card .imgbox{aspect-ratio:245/342;background:#0b1016;position:relative;overflow:hidden}
+.card .imgbox img{width:100%;height:100%;object-fit:contain;display:block}
+.card .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:11px;text-align:center;padding:10px}
+.card .body{padding:9px 10px 10px;flex:1;display:flex;flex-direction:column;gap:2px}
+.card .nm{font-weight:700;font-size:13px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card .meta{font-size:11px;color:var(--tx3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .pr{font-weight:800;color:var(--acc);font-size:14px;margin-top:auto;padding-top:5px}
+.card .pr small{color:var(--tx3);font-weight:600;font-size:11px}
+.qbadge{position:absolute;top:7px;left:7px;background:#000000cc;border:1px solid var(--line2);border-radius:20px;padding:2px 9px;font-size:12px;font-weight:800}
+.vbadge{position:absolute;top:7px;right:7px;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+.v-normal{background:#2d3644;color:#c9d4e2}
+.v-holo{background:#5a3fa8;color:#fff}
+.v-reverse{background:#1f6f8b;color:#fff}
+.v-1st{background:#8a6d1f;color:#fff}
+.v-promo{background:#8b3b5f;color:#fff}
+.cardacts{display:flex;gap:5px;padding:0 10px 10px}
+.cardacts .btn{flex:1;justify-content:center;white-space:nowrap;padding:5px 6px}
+.cardacts .btn.danger{flex:0 0 auto}
+.own{outline:2px solid var(--green);outline-offset:-2px}
+
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;min-width:940px;font-size:13px}
+thead th{background:var(--panel2);text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--tx2);border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:8px 11px;border-bottom:1px solid #202a36;vertical-align:middle}
+tbody tr:hover{background:#ffffff06}
+tbody tr:last-child td{border-bottom:0}
+.tmini{width:34px;height:47px;object-fit:cover;border-radius:4px;background:#0b1016;display:block}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chip{display:inline-block;background:var(--panel2);border:1px solid var(--line2);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap}
+
+.ovl{position:fixed;inset:0;background:#000000bb;z-index:90;display:flex;align-items:center;justify-content:center;padding:18px}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:16px;max-width:680px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 60px #000a}
+.mhead{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.mhead h3{margin:0;font-size:16px;flex:1}
+.mbody{padding:18px}
+.mfoot{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;position:sticky;bottom:0;background:var(--panel)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.x{background:none;border:0;color:var(--tx2);font-size:22px;line-height:1;padding:2px 6px;border-radius:6px}
+.x:hover{background:var(--panel2);color:var(--tx)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:120;background:#22303f;border:1px solid var(--line2);border-radius:10px;padding:11px 18px;font-weight:600;box-shadow:0 10px 30px #0008;max-width:90vw}
+.toast.ok{border-color:#2d5c37;background:#16281c}
+.toast.err{border-color:#6b3028;background:#2a1714}
+.empty{text-align:center;padding:52px 20px;color:var(--tx2)}
+.empty .big{font-size:42px;margin-bottom:10px;opacity:.5}
+.bar{height:7px;background:#0e141c;border-radius:20px;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));border-radius:20px}
+.pgbar{position:fixed;top:0;left:0;height:3px;background:var(--acc);z-index:200;transition:width .25s;box-shadow:0 0 10px var(--acc)}
+.note{background:#152030;border-left:3px solid var(--acc2);padding:10px 13px;border-radius:0 8px 8px 0;font-size:12.5px;color:var(--tx2);margin:12px 0}
+.note b{color:var(--tx)}
+a{color:#79b8ff}
+.pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:16px}
+.srow{display:grid;grid-template-columns:1fr 90px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid #202a36}
+.srow:last-child{border-bottom:0}
+@media(max-width:640px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+  .fgrid{grid-template-columns:1fr}
+  .hdr-stat{display:none}
+  .wrap{padding:0 12px}
+}
+</style>
+</head>
+<body>
+<div class="pgbar" id="pgbar" style="width:0"></div>
+
+<header>
+  <div class="wrap">
+    <div class="hdr">
+      <div class="brand"><span class="pokeball"></span> Mi Colección Pokémon TCG</div>
+      <div class="hdr-spacer"></div>
+      <div class="hdr-stat"><b id="hCount">0</b><span>cartas</span></div>
+      <div class="hdr-stat"><b id="hValue">0 €</b><span>valor est.</span></div>
+      <button class="btn pri" id="btnUpdate">⟳ Actualizar precios</button>
+    </div>
+    <nav class="tabs">
+      <button data-v="coleccion" class="on">📚 Mi colección</button>
+      <button data-v="buscar">🔍 Buscar y añadir</button>
+      <button data-v="sets">🗂️ Explorar expansiones</button>
+      <button data-v="deseos">⭐ Lista de deseos</button>
+      <button data-v="stats">📊 Estadísticas</button>
+      <button data-v="ajustes">⚙️ Ajustes</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section class="view on" id="v-coleccion">
+  <div class="tiles" id="colTiles"></div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:14px">
+      <div class="grow"><label class="f">Buscar en mi colección</label>
+        <input class="inp" id="fText" placeholder="Nombre, set, número, nota..."></div>
+      <div style="min-width:170px"><label class="f">Expansión</label><select class="inp" id="fSet"></select></div>
+      <div style="min-width:140px"><label class="f">Rareza</label><select class="inp" id="fRar"></select></div>
+      <div style="min-width:130px"><label class="f">Variante</label><select class="inp" id="fVar"></select></div>
+      <div style="min-width:120px"><label class="f">Idioma</label><select class="inp" id="fLang"></select></div>
+      <div style="min-width:165px"><label class="f">Precio</label><select class="inp" id="fPrice">
+        <option value="">Todas</option>
+        <option value="sin">⚠ Sin precio</option>
+        <option value="mio">Precio puesto por mí</option>
+        <option value="auto">Precio automático</option>
+      </select></div>
+      <div style="min-width:165px"><label class="f">Ordenar por</label>
+        <select class="inp" id="fSort">
+          <option value="value-desc">Valor total ↓</option>
+          <option value="value-asc">Valor total ↑</option>
+          <option value="unit-desc">Precio unidad ↓</option>
+          <option value="name-asc">Nombre A-Z</option>
+          <option value="set-asc">Set y número</option>
+          <option value="added-desc">Añadidas recientes</option>
+          <option value="qty-desc">Cantidad ↓</option>
+        </select></div>
+      <div><button class="btn" id="btnViewMode">📋 Ver como tabla</button></div>
+      <div><button class="btn" id="btnClearF">Limpiar</button></div>
+    </div>
+    <div id="colOut"></div>
+  </div>
+</section>
+
+<section class="view" id="v-buscar">
+  <div class="panel">
+    <h2 class="t">Buscar cartas</h2>
+    <p class="sub">Busca en el catálogo y añade las cartas a tu colección con un clic.</p>
+    <div class="row">
+      <div style="min-width:150px"><label class="f">Catálogo</label><select class="inp" id="qCat"></select></div>
+      <div class="grow"><label class="f">Nombre de la carta</label>
+        <input class="inp" id="qName" placeholder="Ej: Charizard, Pikachu, Mew ex..." autocomplete="off"></div>
+      <div style="min-width:190px"><label class="f">Expansión (opcional)</label><select class="inp" id="qSet"></select></div>
+      <div style="min-width:110px"><label class="f">Nº (opcional)</label><input class="inp" id="qNum" placeholder="84 o 084/160"></div>
+      <div><button class="btn pri" id="btnSearch">Buscar</button></div>
+      <div><button class="btn" id="btnManual">✍️ Añadir a mano</button></div>
+    </div>
+    <div class="note">💡 El <b>catálogo</b> decide en qué idioma buscas: los nombres de las cartas japonesas están en japonés (グラードン), y los de las españolas en español.<br>
+    El número es el de la esquina inferior de la carta. Da igual cómo lo escribas: <b>84</b>, <b>084</b> o <b>084/160</b> valen igual.</div>
+  </div>
+  <div class="panel"><div id="searchOut"><div class="empty"><div class="big">🔍</div>Escribe un nombre y pulsa <b>Buscar</b>.</div></div></div>
+</section>
+
+<section class="view" id="v-sets">
+  <div class="panel">
+    <h2 class="t">Explorar una expansión completa</h2>
+    <p class="sub">Ideal para ir marcando las cartas que ya tienes de una expansión concreta y ver cuánto te falta para completarla.</p>
+    <div class="row">
+      <div style="min-width:150px"><label class="f">Catálogo</label><select class="inp" id="sCat"></select></div>
+      <div class="grow"><label class="f">Expansión</label><select class="inp" id="sSet"></select></div>
+      <div><button class="btn pri" id="btnLoadSet">Cargar expansión</button></div>
+      <div style="min-width:170px"><label class="f">Ver</label><select class="inp" id="sFilter"><option value="all">Todas</option><option value="have">Solo las que tengo</option><option value="miss">Solo las que me faltan</option></select></div>
+    </div>
+    <div id="setProgress" style="margin-top:14px"></div>
+  </div>
+  <div class="panel"><div id="setOut"><div class="empty"><div class="big">🗂️</div>Elige una expansión y pulsa <b>Cargar set</b>.</div></div></div>
+</section>
+
+<section class="view" id="v-deseos">
+  <div class="tiles" id="wishTiles"></div>
+  <div class="panel">
+    <h2 class="t">Lista de deseos</h2>
+    <p class="sub">Cartas que quieres conseguir. Sus precios también se actualizan, para saber cuándo es buen momento de comprar.</p>
+    <div id="wishOut"></div>
+  </div>
+</section>
+
+<section class="view" id="v-stats">
+  <div class="tiles" id="stTiles"></div>
+  <div class="panel"><h2 class="t">Evolución del valor</h2><p class="sub">Se guarda una instantánea cada vez que actualizas los precios.</p><div id="stHist"></div></div>
+  <div class="panel"><h2 class="t">Top 15 cartas más valiosas</h2><div id="stTop"></div></div>
+  <div class="panel"><h2 class="t">Valor por expansión</h2><div id="stSets"></div></div>
+  <div class="panel"><h2 class="t">Reparto por rareza</h2><div id="stRar"></div></div>
+  <div class="panel"><h2 class="t">De dónde sale cada precio</h2><p class="sub">Cuántas cartas tuyas dependen de cada fuente.</p><div id="stSrc"></div></div>
+</section>
+
+<section class="view" id="v-ajustes">
+  <div class="panel">
+    <h2 class="t">Copias de seguridad</h2>
+    <p class="sub">Tu colección se guarda en este navegador. <b>Exporta un JSON de vez en cuando</b> para no perderla nunca.</p>
+    <div class="row">
+      <button class="btn pri" id="btnExportJson">⬇ Exportar JSON (copia completa)</button>
+      <button class="btn" id="btnExportCsv">⬇ Exportar CSV (Excel)</button>
+      <button class="btn blue" id="btnImport">⬆ Importar JSON</button>
+      <input type="file" id="fileImport" accept=".json,application/json" hidden>
+    </div>
+    <div class="note" id="storeInfo"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="t">De dónde salen los precios</h2>
+    <p class="sub">Todos los precios son de Cardmarket y están en euros. La app usa dos fuentes para no dejarte sin cobertura.</p>
+    <div class="note" id="srcInfo"></div>
+    <div class="row">
+      <div style="min-width:260px"><label class="f">Referencia de precio</label>
+        <select class="inp" id="setPriceMode"></select></div>
+      <div style="min-width:220px"><label class="f">Ajuste por estado</label>
+        <select class="inp" id="setUseCond"><option value="1">Aplicar (recomendado)</option><option value="0">No aplicar (precio base)</option></select></div>
+    </div>
+    <div class="note" style="margin-top:14px"><b>Ajuste por estado:</b> Cardmarket publica un precio de referencia general. Estos multiplicadores estiman lo que vale tu ejemplar según su conservación. Puedes cambiarlos a tu gusto.</div>
+    <div class="fgrid" id="condGrid"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="t">Clave de API (opcional)</h2>
+    <p class="sub">Solo afecta a la fuente de respaldo. TCGdex no pide clave ninguna. Si ya tenías una clave de pokemontcg.io, pégala aquí para tener más margen de consultas mientras esa fuente siga viva; si no la tienes, no hace falta (ya no se pueden crear cuentas nuevas).</p>
+    <div class="row"><div class="grow"><input class="inp" id="setApiKey" placeholder="Pega aquí tu API key (opcional)"></div><button class="btn" id="btnSaveKey">Guardar</button></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="t">Zona peligrosa</h2>
+    <p class="sub">Esto borra toda tu colección de este navegador. Exporta una copia antes.</p>
+    <button class="btn danger" id="btnWipe">🗑 Borrar toda la colección</button>
+  </div>
+
+  <div class="panel">
+    <p class="sub" style="margin:0">Datos de cartas y precios: <a href="https://tcgdex.dev" target="_blank" rel="noopener">TCGdex</a> y, como respaldo, <a href="https://pokemontcg.io" target="_blank" rel="noopener">pokemontcg.io</a>. Los precios se originan en Cardmarket. Proyecto personal sin relación con Nintendo, The Pokémon Company ni Cardmarket. Los precios son orientativos.</p>
+  </div>
+</section>
+
+</main>
+
+<div id="modalHost"></div>
+<div id="toastHost"></div>
+
+<script>
+const SETS_RAW = {"es":[["me05","Oscuridad Absoluta","Megaevolución","2026-07-17",84],["me04","Caos Creciente","Megaevolución","2026-05-22",86],["me03","Equilibrio Perfecto","Megaevolución","2026-03-27",88],["B2a","Paldean Wonders","Juego de Cartas Coleccionables Pokémon Pocket","2026-02-26",93],["me02.5","Héroes Ascendentes","Megaevolución","2026-01-30",217],["B2","Desfile de Ensueño","Juego de Cartas Coleccionables Pokémon Pocket","2026-01-29",155],["B1a","Fuego Carmesí","Juego de Cartas Coleccionables Pokémon Pocket","2025-12-17",69],["me02","Fuegos Fantasmales","Megaevolución","2025-11-14",94],["me01","Megaevolución","Megaevolución","2025-09-26",132],["mep","MEP Black Star Promos","Megaevolución","2025-09-26",0],["mee","Megaevolución Energía","Megaevolución","2025-09-25",8],["A4a","Manantial Oculto","Juego de Cartas Coleccionables Pokémon Pocket","2025-08-28",71],["sv10.5b","Fulgor Negro","Escarlata y Púrpura","2025-07-17",86],["sv10.5w","Llama Blanca","Escarlata y Púrpura","2025-07-17",86],["sv10","Rivales Predestinados","Escarlata y Púrpura","2025-05-30",182],["A3","Guardianes Celestiales","Juego de Cartas Coleccionables Pokémon Pocket","2025-04-30",155],["sv09","Juntos de Aventuras","Escarlata y Púrpura","2025-03-28",159],["A2b","Festival Brillante","Juego de Cartas Coleccionables Pokémon Pocket","2025-03-27",72],["A2a","Luz Triunfal","Juego de Cartas Coleccionables Pokémon Pocket","2025-02-28",75],["A2","Pugna Espaciotemporal","Juego de Cartas Coleccionables Pokémon Pocket","2025-01-30",140],["sv08.5","Evoluciones Prismáticas","Escarlata y Púrpura","2025-01-17",131],["A1a","La Isla Singular","Juego de Cartas Coleccionables Pokémon Pocket","2024-12-17",68],["2024sv","Colección de McDonald's 2024","Colección de McDonald's","2024-12-04",15],["sv08","Chispas Fulgurantes","Escarlata y Púrpura","2024-11-08",191],["P-A","Promo-A","Juego de Cartas Coleccionables Pokémon Pocket","2024-10-30",0],["A1","Genes Formidables","Juego de Cartas Coleccionables Pokémon Pocket","2024-10-30",226],["sv07","Corona Astral","Escarlata y Púrpura","2024-09-13",142],["sv06.5","Fabula Sombría","Escarlata y Púrpura","2024-08-02",64],["sv06","Mascarada Crepuscular","Escarlata y Púrpura","2024-05-24",167],["sv05","Fuerzas Temporales","Escarlata y Púrpura","2024-03-22",162],["sv04.5","Destinos de Paldea","Escarlata y Púrpura","2024-01-26",91],["sv04","Brecha Paradójica","Escarlata y Púrpura","2023-11-03",182],["sv03.5","151","Escarlata y Púrpura","2023-09-22",165],["sv03","Llamas Obsidianas","Escarlata y Púrpura","2023-08-11",197],["2023sv","Colección de McDonald's 2023","Colección de McDonald's","2023-08-01",15],["sv02","Evoluciones en Paldea","Escarlata y Púrpura","2023-06-09",193],["svp","SVP Black Star Promos","Escarlata y Púrpura","2023-03-31",225],["sve","Escarlata y Púrpura Energía","Escarlata y Púrpura","2023-03-31",24],["sv01","Escarlata y Púrpura","Escarlata y Púrpura","2023-03-31",198],["swsh12.5","Cenit Supremo","Espada y Escudo","2023-01-20",159],["swsh12.5gg","Cenit Supremo Galería de Galar","Espada y Escudo","2023-01-20",70],["swsh12","Tempestad Plateada","Espada y Escudo","2022-11-11",195],["swsh12tg","Tempestad Plateada Galería de Entrenador","Espada y Escudo","2022-11-11",30],["swsh11tg","Origen Perdido Galería de Entrenador","Espada y Escudo","2022-09-09",30],["swsh11","Origen Perdido","Espada y Escudo","2022-09-09",196],["2022swsh","Colección de McDonald's 2022","Colección de McDonald's","2022-08-03",15],["swsh10.5","Pokémon GO","Espada y Escudo","2022-07-01",78],["swsh10","Resplandor Astral","Espada y Escudo","2022-05-27",189],["swsh10tg","Resplandor Astral Galería de Entrenador","Espada y Escudo","2022-05-27",30],["swsh9tg","Astros Brillantes Galería de Entrenador","Espada y Escudo","2022-02-25",30],["swsh9","Astros Brillantes","Espada y Escudo","2022-02-25",172],["swsh8","Golpe Fusión","Espada y Escudo","2021-11-12",264],["cel25cc","Celebraciones Colección Clásica","Espada y Escudo","2021-10-08",25],["cel25","Celebraciones","Espada y Escudo","2021-10-08",25],["swsh7","Cielos Evolutivos","Espada y Escudo","2021-08-27",203],["swsh6","Reinado Escalofriante","Espada y Escudo","2021-06-18",198],["swsh5","Estilos de Combate","Espada y Escudo","2021-03-19",163],["swsh4.5","Destinos Brillantes","Espada y Escudo","2021-02-19",72],["swsh4.5sv","Destinos Brillantes Tesoro Brillante","Espada y Escudo","2021-02-19",122],["2021swsh","Colección de McDonald's 2021","Colección de McDonald's","2021-02-09",25],["swsh4","Voltaje Vívido","Espada y Escudo","2020-11-13",185],["swsh3.5","Camino de Campeones","Espada y Escudo","2020-09-25",73],["swsh3","Oscuridad Incandescente","Espada y Escudo","2020-08-14",189],["swsh2","Choque Rebelde","Espada y Escudo","2020-05-01",192],["swsh1","Espada y Escudo","Espada y Escudo","2020-02-07",202],["swshp","Cartas de promoción ESES","Espada y Escudo","2019-11-15",307],["sm12","Eclipse Cósmico","Sol y Luna","2019-11-01",236],["sma","Destinos Ocultos Tesoro Brillante","Sol y Luna","2019-08-23",94],["sm115","Destinos Ocultos","Sol y Luna","2019-08-23",68],["sm11","Mentes Unidas","Sol y Luna","2019-08-02",236],["sm10","Vínculos Indestructibles","Sol y Luna","2019-05-03",214],["det1","Detective Pikachu","Sol y Luna","2019-03-29",18],["sm9","Union de Aliados","Sol y Luna","2019-01-31",181],["sm8","Truenos Perdidos","Sol y Luna","2018-11-02",214],["sm7.5","Majestad De Dragones","Sol y Luna","2018-09-07",70],["sm7","Tormenta Celestial","Sol y Luna","2018-08-03",168],["sm6","Luz Prohibida","Sol y Luna","2018-05-04",131],["sm5","Ultraprisma","Sol y Luna","2018-02-02",156],["sm4","Invasión Carmesí","Sol y Luna","2017-11-03",111],["sm3.5","Leyendas Luminosas","Sol y Luna","2017-10-06",73],["sm3","Sombras Ardientes","Sol y Luna","2017-08-04",147],["sm2","Albor de Guadianes","Sol y Luna","2017-05-05",145],["tk-sm-r","Kit de Entrenador Sol y Luna (Raichu de Alola)","Kits de Entrenador","2017-04-21",30],["tk-sm-l","Kit de Entrenador Sol y Luna (Lycanroc)","Kits de Entrenador","2017-04-21",30],["sm1","Sol y Luna","Sol y Luna","2017-02-03",149],["smp","SL Cartas de promoción","Sol y Luna","2017-02-03",248],["xy12","Evoluciones","XY","2016-11-02",108],["xy11","Asedio de Vapor","XY","2016-08-03",114],["xy10","Destinos Enfrentados","XY","2016-05-02",124],["tk-xy-p","Kit de Entrenador XY (Pikachu Enmascarada)","Kits de Entrenador","2016-04-27",30],["tk-xy-su","Kit de Entrenador XY (Suicune)","Kits de Entrenador","2016-04-27",30],["g1","Generaciones","XY","2016-02-22",83],["xy9","TURBOLímite","XY","2016-02-03",122],["xy8","Turbo Impulso","XY","2015-11-04",162],["xy7","Antiguos Orígenes","XY","2015-08-12",98],["xy6","Cielos Rugientes","XY","2015-05-06",108],["tk-xy-latio","Kit de Entrenador XY (Latios)","Kits de Entrenador","2015-04-29",30],["tk-xy-latia","Kit de Entrenador XY (Latias)","Kits de Entrenador","2015-04-29",30],["xy5","Duelos Primigenios","XY","2015-02-04",160],["xy4","Fuerzas Fantasmales","XY","2014-11-05",119],["tk-xy-b","Kit de Entrenador XY (Bisharp)","Kits de Entrenador","2014-11-01",30],["tk-xy-w","Kit de Entrenador XY (Wigglytuff)","Kits de Entrenador","2014-11-01",30],["xy3","Puños Furiosos","XY","2014-08-13",111],["xy2","Destellos de Fuego","XY","2014-05-07",106],["tk-xy-n","Kit de Entrenador XY (Noivern)","Kits de Entrenador","2014-03-12",30],["tk-xy-sy","Kit de Entrenador XY (Pikachu Enmascarada)","Kits de Entrenador","2014-03-12",30],["xya","Cartas alternativas","XY","2014-02-05",6],["xy1","XY","XY","2014-02-05",146],["xyp","XY Cartas de promoción","XY","2013-10-12",211],["bw9","Glaciación Plasma","Negro y Blanco","2013-05-08",116],["bw8","Tormenta Plasma","Negro y Blanco","2013-02-06",135],["bw7","Fronteras Cruzadas","Negro y Blanco","2012-11-07",149],["dv1","Tesoro de Dragones","Negro y Blanco","2012-10-05",20],["bw6","Dragones Majestuosos","Negro y Blanco","2012-08-15",124],["2012bw","Colección de McDonald's 2012","Colección de McDonald's","2012-06-15",12],["bw5","Oscuros Exploradores","Negro y Blanco","2012-05-09",108],["bw4","Próximos Destinos","Negro y Blanco","2012-02-08",99],["bw3","Nobles Victorias","Negro y Blanco","2011-11-16",101],["tk-bw-e","Kit de Entrenador BW (Excadrill)","Kits de Entrenador","2011-09-01",30],["tk-bw-z","Kit de Entrenador XY (Pikachu Enmascarada)","Kits de Entrenador","2011-09-01",30],["bw2","Fuerzas Emergentes","Negro y Blanco","2011-08-31",98],["2011bw","Colección de McDonald's 2011","Colección de McDonald's","2011-06-17",12],["bwp","NB Promo","Negro y Blanco","2011-04-26",101],["bw1","Negro y Blanco","Negro y Blanco","2011-04-25",114],["hgss2","Liberados","HeartGold SoulSilver","2010-05-12",95],["tk-hs-r","Kit de Entrenador HeatGold & SoulSilver (Raichu)","Kits de Entrenador","2010-05-01",30],["tk-hs-g","Kit de Entrenador HeatGold & SoulSilver (Gyarados)","Kits de Entrenador","2010-05-01",30],["hgssp","HGSS Black Star Promos","HeartGold SoulSilver","2010-02-11",25],["hgss1","HeartGold SoulSilver","HeartGold SoulSilver","2010-02-10",123],["ru1","Pokémon Rumble","Platino","2009-12-02",16],["pl4","Arceus","Platino","2009-11-04",99],["pl1","Platino","Platino","2009-02-11",127],["dp7","Frente Tormentoso","Diamante & Perla","2008-11-01",100],["dp6","Despertar de las Leyendas","Diamante & Perla","2008-08-01",146],["dp4","Grandes Encuentros","Diamante & Perla","2008-02-01",106],["dp3","Maravillas Secretas","Diamante & Perla","2007-11-01",132],["tk-dp-l","Kit de Entrenador Diamante & Perla (Lucario)","Kits de Entrenador","2007-09-01",11],["tk-dp-m","Kit de Entrenador Diamante & Perla (Manaphy)","Kits de Entrenador","2007-09-01",12],["dp2","Tesoros Misteriosos","Diamante & Perla","2007-08-01",123],["dpp","DP Black Star Promos","Diamante & Perla","2007-05-01",56],["dp1","Diamante & Perla","Diamante & Perla","2007-05-01",130],["tk-ex-m","Kit de Entrenador EX (Ninun)","Kits de Entrenador","2006-03-01",12],["tk-ex-p","Kit de Entrenador EX (Plusle)","Kits de Entrenador","2006-03-01",12],["ex10","EX Fuerzas Ocultas","ex","2005-08-22",115],["exu","EX Fuerzas Ocultas Unown","ex","2005-08-22",28],["tk-ex-latia","Kit de Entrenador EX (Latias)","Kits de Entrenador","2004-07-01",10],["tk-ex-latio","Kit de Entrenador EX (Latios)","Kits de Entrenador","2004-07-01",10],["np","Nintendo Black Star Promos","POP","2003-10-01",40],["ex1","Rubí & Zafiro","ex","2003-07-01",109],["neo1","Neo Genesis","Neo","2000-12-16",111],["base3","Fósil","Clásica","1999-10-10",62],["basep","Wizards Black Star Promos","Clásica","1999-07-01",53],["base2","Jungla","Clásica","1999-06-16",64],["base1","Edición Básica","Clásica","1999-01-09",102]],"en":[["me05","Pitch Black","Mega Evolution","2026-07-17",84],["me04","Chaos Rising","Mega Evolution","2026-05-22",86],["me03","Perfect Order","Mega Evolution","2026-03-27",88],["B2a","Paldean Wonders","Pokémon TCG Pocket","2026-02-26",93],["me02.5","Ascended Heroes","Mega Evolution","2026-01-30",217],["B2","Fantastical Parade","Pokémon TCG Pocket","2026-01-29",155],["B1a","Crimson Blaze","Pokémon TCG Pocket","2025-12-17",69],["me02","Phantasmal Flames","Mega Evolution","2025-11-14",94],["B1","Mega Rising","Pokémon TCG Pocket","2025-10-30",226],["mep","MEP Black Star Promos","Mega Evolution","2025-09-26",0],["me01","Mega Evolution","Mega Evolution","2025-09-26",132],["mee","Mega Evolution Energy","Mega Evolution","2025-09-25",8],["A4a","Secluded Springs","Pokémon TCG Pocket","2025-08-28",71],["A4","Wisdom of Sea and Sky","Pokémon TCG Pocket","2025-07-30",161],["sv10.5b","Black Bolt","Scarlet & Violet","2025-07-17",86],["sv10.5w","White Flare","Scarlet & Violet","2025-07-17",86],["A3b","Eevee Grove","Pokémon TCG Pocket","2025-06-26",69],["sv10","Destined Rivals","Scarlet & Violet","2025-05-30",182],["A3a","Extradimensional Crisis","Pokémon TCG Pocket","2025-05-29",69],["A3","Celestial Guardians","Pokémon TCG Pocket","2025-04-30",155],["sv09","Journey Together","Scarlet & Violet","2025-03-28",159],["A2b","Shining Revelry","Pokémon TCG Pocket","2025-03-27",72],["A2a","Triumphant Light","Pokémon TCG Pocket","2025-02-28",75],["A2","Space-Time Smackdown","Pokémon TCG Pocket","2025-01-30",140],["sv08.5","Prismatic Evolutions","Scarlet & Violet","2025-01-17",131],["A1a","Mythical Island","Pokémon TCG Pocket","2024-12-17",68],["2024sv","McDonald's Collection 2024","McDonald's Collection","2024-12-04",15],["sv08","Surging Sparks","Scarlet & Violet","2024-11-08",191],["P-A","Promos-A","Pokémon TCG Pocket","2024-10-30",0],["A1","Genetic Apex","Pokémon TCG Pocket","2024-10-30",226],["sv07","Stellar Crown","Scarlet & Violet","2024-09-13",142],["sv06.5","Shrouded Fable","Scarlet & Violet","2024-08-02",64],["sv06","Twilight Masquerade","Scarlet & Violet","2024-05-24",167],["sv05","Temporal Forces","Scarlet & Violet","2024-03-22",162],["sv04.5","Paldean Fates","Scarlet & Violet","2024-01-26",91],["sv04","Paradox Rift","Scarlet & Violet","2023-11-03",182],["mfb","My First Battle","Scarlet & Violet","2023-09-29",48],["sv03.5","151","Scarlet & Violet","2023-09-22",165],["sv03","Obsidian Flames","Scarlet & Violet","2023-08-11",197],["2023sv","McDonald's Collection 2023","McDonald's Collection","2023-08-01",15],["sv02","Paldea Evolved","Scarlet & Violet","2023-06-09",193],["sve","Scarlet & Violet Energy","Scarlet & Violet","2023-03-31",24],["sv01","Scarlet & Violet","Scarlet & Violet","2023-03-31",198],["svp","SVP Black Star Promos","Scarlet & Violet","2023-03-31",225],["swsh12.5","Crown Zenith","Sword & Shield","2023-01-20",159],["swsh12.5gg","Crown Zenith Galarian Gallery","Sword & Shield","2023-01-20",70],["swsh12tg","Silver Tempest Trainer Gallery","Sword & Shield","2022-11-11",30],["swsh12","Silver Tempest","Sword & Shield","2022-11-11",195],["swsh11","Lost Origin","Sword & Shield","2022-09-09",196],["swsh11tg","Lost Origin Trainer Gallery","Sword & Shield","2022-09-09",30],["2022swsh","McDonald's Collection 2022","McDonald's Collection","2022-08-03",15],["swsh10.5","Pokémon GO","Sword & Shield","2022-07-01",78],["swsh10","Astral Radiance","Sword & Shield","2022-05-27",189],["swsh10tg","Astral Radiance Trainer Gallery","Sword & Shield","2022-05-27",30],["swsh9tg","Brilliant Stars Trainer Gallery","Sword & Shield","2022-02-25",30],["swsh9","Brilliant Stars","Sword & Shield","2022-02-25",172],["swsh8","Fusion Strike","Sword & Shield","2021-11-12",264],["cel25cc","Celebrations Classic Collection","Sword & Shield","2021-10-08",25],["cel25","Celebrations","Sword & Shield","2021-10-08",25],["swsh7","Evolving Skies","Sword & Shield","2021-08-27",203],["swsh6","Chilling Reign","Sword & Shield","2021-06-18",198],["swsh5","Battle Styles","Sword & Shield","2021-03-19",163],["swsh4.5sv","Shining Fates Shiny Vault","Sword & Shield","2021-02-19",122],["swsh4.5","Shining Fates","Sword & Shield","2021-02-19",72],["2021swsh","McDonald's Collection 2021","McDonald's Collection","2021-02-09",25],["swsh4","Vivid Voltage","Sword & Shield","2020-11-13",185],["swsh3.5","Champion's Path","Sword & Shield","2020-09-25",73],["fut2020","Pokémon Futsal 2020","Sword & Shield","2020-09-11",5],["swsh3","Darkness Ablaze","Sword & Shield","2020-08-14",189],["swsh2","Rebel Clash","Sword & Shield","2020-05-01",192],["swsh1","Sword & Shield","Sword & Shield","2020-02-07",202],["swshp","SWSH Black Star Promos","Sword & Shield","2019-11-15",307],["sm12","Cosmic Eclipse","Sun & Moon","2019-11-01",236],["2019sm","McDonald's Collection 2019","McDonald's Collection","2019-10-15",12],["sm115","Hidden Fates","Sun & Moon","2019-08-23",68],["sma","Hidden Fates Shiny Vault","Sun & Moon","2019-08-23",94],["sm11","Unified Minds","Sun & Moon","2019-08-02",236],["sm10","Unbroken Bonds","Sun & Moon","2019-05-03",214],["det1","Detective Pikachu","Sun & Moon","2019-03-29",18],["sm9","Team Up","Sun & Moon","2019-01-31",181],["sm8","Lost Thunder","Sun & Moon","2018-11-02",214],["2018sm","McDonald's Collection 2018","McDonald's Collection","2018-10-19",12],["sm7.5","Dragon Majesty","Sun & Moon","2018-09-07",70],["sm7","Celestial Storm","Sun & Moon","2018-08-03",168],["sm6","Forbidden Light","Sun & Moon","2018-05-04",131],["sm5","Ultra Prism","Sun & Moon","2018-02-02",156],["sm4","Crimson Invasion","Sun & Moon","2017-11-03",111],["sm3.5","Shining Legends","Sun & Moon","2017-10-06",73],["sm3","Burning Shadows","Sun & Moon","2017-08-04",147],["2017sm","McDonald's Collection 2017","McDonald's Collection","2017-08-03",12],["sm2","Guardians Rising","Sun & Moon","2017-05-05",145],["tk-sm-r","SM trainer Kit (Alolan Raichu)","Trainer kits","2017-04-21",30],["tk-sm-l","SM trainer Kit (Lycanroc)","Trainer kits","2017-04-21",30],["sm1","Sun & Moon","Sun & Moon","2017-02-03",149],["smp","SM Black Star Promos","Sun & Moon","2017-02-03",248],["xy12","Evolutions","XY","2016-11-02",108],["2016xy","McDonald's Collection 2016","McDonald's Collection","2016-08-20",12],["xy11","Steam Siege","XY","2016-08-03",114],["xy10","Fates Collide","XY","2016-05-02",124],["tk-xy-su","XY trainer Kit (Suicune)","Trainer kits","2016-04-27",30],["tk-xy-p","XY trainer Kit (Pikachu Libre)","Trainer kits","2016-04-27",30],["g1","Generations","XY","2016-02-22",83],["xy9","BREAKpoint","XY","2016-02-03",122],["2015xy","McDonald's Collection 2015","McDonald's Collection","2015-11-27",12],["xy8","BREAKthrough","XY","2015-11-04",162],["xy7","Ancient Origins","XY","2015-08-12",98],["xy6","Roaring Skies","XY","2015-05-06",108],["tk-xy-latio","XY trainer Kit (Latios)","Trainer kits","2015-04-29",30],["tk-xy-latia","XY trainer Kit (Latias)","Trainer kits","2015-04-29",30],["dc1","Double Crisis","XY","2015-03-25",34],["xy5","Primal Clash","XY","2015-02-04",160],["xy4","Phantom Forces","XY","2014-11-05",119],["tk-xy-b","XY trainer Kit (Bisharp)","Trainer kits","2014-11-01",30],["tk-xy-w","XY trainer Kit (Wigglytuff)","Trainer kits","2014-11-01",30],["xy3","Furious Fists","XY","2014-08-13",111],["2014xy","McDonald's Collection 2014","McDonald's Collection","2014-05-23",12],["xy2","Flashfire","XY","2014-05-07",106],["tk-xy-n","XY trainer Kit (Noivern)","Trainer kits","2014-03-12",30],["tk-xy-sy","XY trainer Kit (Sylveon)","Trainer kits","2014-03-12",30],["xya","Yellow A Alternate","XY","2014-02-05",6],["xy1","XY","XY","2014-02-05",146],["xy0","Kalos Starter Set","XY","2013-11-08",39],["rc","Radiant Collection","Black & White","2013-11-06",25],["bw11","Legendary Treasures","Black & White","2013-11-06",113],["xyp","XY Black Star Promos","XY","2013-10-12",211],["bw10","Plasma Blast","Black & White","2013-08-14",101],["bw9","Plasma Freeze","Black & White","2013-05-08",116],["bw8","Plasma Storm","Black & White","2013-02-06",135],["bw7","Boundaries Crossed","Black & White","2012-11-07",149],["dv1","Dragon Vault","Black & White","2012-10-05",20],["bw6","Dragons Exalted","Black & White","2012-08-15",124],["2012bw","McDonald's Collection 2012","McDonald's Collection","2012-06-15",12],["bw5","Dark Explorers","Black & White","2012-05-09",108],["bw4","Next Destinies","Black & White","2012-02-08",99],["bw3","Noble Victories","Black & White","2011-11-16",101],["tk-bw-e","BW trainer Kit (Excadrill)","Trainer kits","2011-09-01",30],["tk-bw-z","BW trainer Kit (Zoroark)","Trainer kits","2011-09-01",30],["bw2","Emerging Powers","Black & White","2011-08-31",98],["2011bw","McDonald's Collection 2011","McDonald's Collection","2011-06-17",12],["bwp","BW Black Star Promos","Black & White","2011-04-26",101],["bw1","Black & White","Black & White","2011-04-25",114],["col1","Call of Legends","Call of Legends","2011-02-09",95],["hgss4","Triumphant","HeartGold & SoulSilver","2010-11-03",102],["hgss3","Undaunted","HeartGold & SoulSilver","2010-08-18",90],["hgss2","Unleashed","HeartGold & SoulSilver","2010-05-12",95],["tk-hs-r","HS trainer Kit (Raichu)","Trainer kits","2010-05-01",30],["tk-hs-g","HS trainer Kit (Gyarados)","Trainer kits","2010-05-01",30],["hgssp","HGSS Black Star Promos","HeartGold & SoulSilver","2010-02-11",25],["hgss1","HeartGold SoulSilver","HeartGold & SoulSilver","2010-02-10",123],["ru1","Pokémon Rumble","Platinum","2009-12-02",16],["pl4","Arceus","Platinum","2009-11-04",99],["pl3","Supreme Victors","Platinum","2009-08-19",147],["pl2","Rising Rivals","Platinum","2009-05-16",111],["pop9","POP Series 9","POP","2009-03-01",17],["pl1","Platinum","Platinum","2009-02-11",127],["dp7","Stormfront","Diamond & Pearl","2008-11-01",100],["pop8","POP Series 8","POP","2008-09-01",17],["dp6","Legends Awakened","Diamond & Pearl","2008-08-01",146],["dp5","Majestic Dawn","Diamond & Pearl","2008-05-01",100],["pop7","POP Series 7","POP","2008-03-01",17],["dp4","Great Encounters","Diamond & Pearl","2008-02-01",106],["dp3","Secret Wonders","Diamond & Pearl","2007-11-01",132],["pop6","POP Series 6","POP","2007-09-01",17],["tk-dp-l","DP trainer Kit (Lucario)","Trainer kits","2007-09-01",11],["tk-dp-m","DP trainer Kit (Manaphy)","Trainer kits","2007-09-01",12],["dp2","Mysterious Treasures","Diamond & Pearl","2007-08-01",123],["dpp","DP Black Star Promos","Diamond & Pearl","2007-05-01",56],["dp1","Diamond & Pearl","Diamond & Pearl","2007-05-01",130],["pop5","POP Series 5","POP","2007-03-01",17],["ex16","Power Keepers","EX","2007-02-17",108],["ex15","Dragon Frontiers","EX","2006-11-08",101],["ex14","Crystal Guardians","EX","2006-08-30",100],["pop4","POP Series 4","POP","2006-08-01",17],["ex13","Holon Phantoms","EX","2006-05-03",110],["pop3","POP Series 3","POP","2006-04-01",17],["tk-ex-m","EX trainer Kit 2 (Minun)","Trainer kits","2006-03-01",12],["tk-ex-p","EX trainer Kit 2 (Plusle)","Trainer kits","2006-03-01",12],["ex12","Legend Maker","EX","2006-02-13",92],["ex11","Delta Species","EX","2005-10-31",113],["exu","Unseen Forces Unown Collection","EX","2005-08-22",28],["ex10","Unseen Forces","EX","2005-08-22",115],["pop2","POP Series 2","POP","2005-08-01",17],["ex9","Emerald","EX","2005-05-09",106],["ex8","Deoxys","EX","2005-02-01",107],["ex7","Team Rocket Returns","EX","2004-11-01",109],["ex6","FireRed & LeafGreen","EX","2004-09-01",112],["pop1","POP Series 1","POP","2004-09-01",17],["tk-ex-latia","EX trainer Kit (Latias)","Trainer kits","2004-07-01",10],["ex5.5","Poké Card Creator Pack","EX","2004-07-01",5],["tk-ex-latio","EX trainer Kit (Latios)","Trainer kits","2004-07-01",10],["ex5","Hidden Legends","EX","2004-06-01",101],["ex4","Team Magma vs Team Aqua","EX","2004-03-01",95],["ex3","Dragon","EX","2003-11-24",97],["np","Nintendo Black Star Promos","POP","2003-10-01",40],["ex2","Sandstorm","EX","2003-09-18",100],["ex1","Ruby & Sapphire","EX","2003-07-01",109],["ecard3","Skyridge","E-Card","2003-05-12",144],["ecard2","Aquapolis","E-Card","2003-01-15",147],["bog","Best of game","E-Card","2002-12-01",9],["ecard1","Expedition Base Set","E-Card","2002-09-15",165],["sp","Sample","E-Card","2002-08-01",10],["lc","Legendary Collection","Legendary Collection","2002-05-24",110],["neo4","Neo Destiny","Neo","2002-02-28",105],["neo3","Neo Revelation","Neo","2001-09-21",64],["si1","Southern Islands","Neo","2001-07-31",18],["neo2","Neo Discovery","Neo","2001-06-01",75],["neo1","Neo Genesis","Neo","2000-12-16",111],["gym2","Gym Challenge","Gym","2000-10-16",132],["gym1","Gym Heroes","Gym","2000-08-14",132],["base5","Team Rocket","Base","2000-04-24",82],["base4","Base Set 2","Base","2000-02-24",130],["jumbo","Jumbo cards","Miscellaneous","2000-02-01",160],["base3","Fossil","Base","1999-10-10",62],["wp","W Promotional","Base","1999-09-01",7],["basep","Wizards Black Star Promos","Base","1999-07-01",53],["base2","Jungle","Base","1999-06-16",64],["base1","Base Set","Base","1999-01-09",102],["miscp","Miscellaneous Promos","Miscellaneous","1996-01-01",1]],"ja":[["M6","ストームエメラルダ","ポケモンカードゲーム MEGA","2026-07-31",76],["M5","アビスアイ","ポケモンカードゲーム MEGA","2026-05-22",81],["M4","ニンジャスピナー","ポケモンカードゲーム MEGA","2026-03-13",83],["M3","ムニキスゼロ","ポケモンカードゲーム MEGA","2026-01-23",80],["MC","スタートデッキ100 バトルコレクション","ポケモンカードゲーム MEGA","2025-12-19",742],["M2a","MEGAドリームex","ポケモンカードゲーム MEGA","2025-11-28",193],["M2","インフェルノX","ポケモンカードゲーム MEGA","2025-09-26",80],["M1L","メガブレイブ","ポケモンカードゲーム MEGA","2025-08-01",63],["M1S","メガシンフォニア","ポケモンカードゲーム MEGA","2025-08-01",63],["M-P","メガ プロモカード","ポケモンカードゲーム MEGA","2025-07-28",0],["SV11B","ブラックボルト","ポケモンカードゲーム スカーレット&バイオレット","2025-06-06",174],["SV11W","ホワイトフレア","ポケモンカードゲーム スカーレット&バイオレット","2025-06-06",86],["SV10","ロケット団の栄光","ポケモンカードゲーム スカーレット&バイオレット","2025-04-18",98],["SV9a","熱風のアリーナ","ポケモンカードゲーム スカーレット&バイオレット","2025-03-14",63],["SV9","バトルパートナーズ","ポケモンカードゲーム スカーレット&バイオレット","2025-01-24",100],["SV8a","テラスタルフェスex","ポケモンカードゲーム スカーレット&バイオレット","2024-12-06",187],["SV8","超電ブレイカー","ポケモンカードゲーム スカーレット&バイオレット","2024-10-18",106],["SV7a","楽園ドラゴーナ","ポケモンカードゲーム スカーレット&バイオレット","2024-09-13",64],["SVLN","スターターセット テラスタイプ：ステラ ニンフィアex","ポケモンカードゲーム スカーレット&バイオレット","2024-08-30",22],["SVLS","スターターセット テラスタイプ：ステラ ソウブレイズex","ポケモンカードゲーム スカーレット&バイオレット","2024-08-30",22],["SVK","デッキビルドBOX ステラミラクル","ポケモンカードゲーム スカーレット&バイオレット","2024-07-19",44],["SV7","ステラミラクル","ポケモンカードゲーム スカーレット&バイオレット","2024-07-19",102],["SV6a","ナイトワンダラー","ポケモンカードゲーム スカーレット&バイオレット","2024-06-07",64],["CS2b","トリプレットビート","剣と盾","2024-04-26",101],["CS2.5","トリプレットビート","剣と盾","2024-04-26",101],["CS4","トリプレットビート","剣と盾","2024-04-26",101],["CS1.5","トリプレットビート","剣と盾","2024-04-26",101],["CS3.5","トリプレットビート","剣と盾","2024-04-26",101],["CS3b","トリプレットビート","剣と盾","2024-04-26",101],["CS2a","トリプレットビート","剣と盾","2024-04-26",101],["CS3a","トリプレットビート","剣と盾","2024-04-26",101],["CS4a","トリプレットビート","剣と盾","2024-04-26",101],["CS1a","トリプレットビート","剣と盾","2024-04-26",101],["CS1b","トリプレットビート","剣と盾","2024-04-26",101],["CS4b","トリプレットビート","剣と盾","2024-04-26",101],["CSA","トリプレットビート","剣と盾","2024-04-26",101],["CS3D","トリプレットビート","剣と盾","2024-04-26",101],["CS4Da","トリプレットビート","剣と盾","2024-04-26",101],["SV6","変幻の仮面","ポケモンカードゲーム スカーレット&バイオレット","2024-04-26",101],["SV5a","クリムゾンヘイズ","ポケモンカードゲーム スカーレット&バイオレット","2024-03-22",66],["SV5M","サイバージャッジ","ポケモンカードゲーム スカーレット&バイオレット","2024-01-26",71],["SV5K","ワイルドフォース","ポケモンカードゲーム スカーレット&バイオレット","2024-01-26",71],["SV4a","レイジングサーフ","ポケモンカードゲーム スカーレット&バイオレット","2023-12-01",190],["SV4M","未来の一閃","ポケモンカードゲーム スカーレット&バイオレット","2023-10-27",66],["SV4K","古代の咆哮","ポケモンカードゲーム スカーレット&バイオレット","2023-10-27",66],["SV3a","レイジングサーフ","ポケモンカードゲーム スカーレット&バイオレット","2023-09-22",62],["SV3","黒炎の支配者","ポケモンカードゲーム スカーレット&バイオレット","2023-07-28",108],["SV2a","ポケモンカード151","ポケモンカードゲーム スカーレット&バイオレット","2023-06-16",165],["SV2P","スノーハザード","ポケモンカードゲーム スカーレット&バイオレット","2023-04-14",71],["SV2D","クレイバースト","ポケモンカードゲーム スカーレット&バイオレット","2023-04-14",71],["SV1a","トリプレットビート","ポケモンカードゲーム スカーレット&バイオレット","2023-03-10",73],["SV1V","バイオレットex","ポケモンカードゲーム スカーレット&バイオレット","2023-01-20",78],["SV1S","スカーレットex","ポケモンカードゲーム スカーレット&バイオレット","2023-01-20",78],["S12a","VSTARユニバース","剣と盾","2022-12-02",172],["SV-P","スカーレット&バイオレット プロモカード","ポケモンカードゲーム スカーレット&バイオレット","2022-11-29",0],["S12","パラダイムトリガー","剣と盾","2022-10-21",98],["S11a","白熱のアルカナ","剣と盾","2022-09-02",68],["S11","ロストアビス","剣と盾","2022-07-15",100],["S10b","Pokémon GO","剣と盾","2022-06-17",71],["S10a","ダークファンタズマ","剣と盾","2022-05-13",71],["S10D","タイムゲイザー","剣と盾","2022-04-08",67],["S10P","スペースジャグラー","剣と盾","2022-04-08",67],["S9a","バトルリージョン","剣と盾","2022-02-25",67],["S9","スターバース","剣と盾","2022-01-14",100],["S8b","VMAXクライマックス","剣と盾","2021-12-03",184],["S8a","25th アニバーサリーコレクション","剣と盾","2021-10-22",28],["S8","フュージョンアーツ","剣と盾","2021-09-24",100],["S7R","蒼空ストリーム","剣と盾","2021-07-09",67],["S7D","摩天パーフェクト","剣と盾","2021-07-09",67],["S6a","イーブイヒーローズ","剣と盾","2021-05-28",69],["S6K","漆黒のガイスト","剣と盾","2021-04-23",70],["S6H","白銀のランス","剣と盾","2021-04-23",70],["S5a","双璧のファイター","剣と盾","2021-03-19",70],["S5I","一撃マスター","剣と盾","2021-01-22",70],["S5R","連撃マスター","剣と盾","2021-01-22",70],["S4a","シャイニースターV","剣と盾","2020-11-20",190],["S4","仰天のボルテッカー","剣と盾","2020-09-18",100],["S3a","伝説の鼓動","剣と盾","2020-07-10",76],["S3","ムゲンゾーン","剣と盾","2020-06-05",100],["S2a","爆炎ウォーカー","剣と盾","2020-04-24",70],["S2","反逆クラッシュ","剣と盾","2020-03-06",96],["S1a","VMAXライジング","剣と盾","2020-02-07",70],["S1W","ソード","剣と盾","2019-12-06",60],["S1H","シールド","剣と盾","2019-12-06",60],["SM12a","TAG TEAM GX タッグオールスターズ","サン＆ムーン","2019-10-04",173],["SM12","オルタージェネシス","サン＆ムーン","2019-09-06",95],["SM11b","ドリームリーグ","サン＆ムーン","2019-08-02",49],["SM11a","リミックスバウト","サン＆ムーン","2019-07-05",64],["SM11","ミラクルツイン","サン＆ムーン","2019-05-31",94],["SMP2","名探偵ピカチュウ","サン＆ムーン","2019-04-26",24],["SM10b","スカイレジェンド","サン＆ムーン","2019-04-26",56],["SM10a","ジージーエンド","サン＆ムーン","2019-04-05",54],["SM10","ダブルブレイズ","サン＆ムーン","2019-03-01",95],["SM9b","フルメタルウォール","サン＆ムーン","2019-02-01",54],["SM9a","ナイトユニゾン","サン＆ムーン","2019-01-11",55],["SM9","タッグボルト","サン＆ムーン","2018-12-07",95],["SM8b","GXウルトラシャイニー","サン＆ムーン","2018-10-05",150],["SM8a","ダークオーダー","サン＆ムーン","2018-10-05",52],["SM8","超爆インパクト","サン＆ムーン","2018-09-07",95],["SM7b","フェアリーライズ","サン＆ムーン","2018-08-03",50],["SM7a","迅雷スパーク","サン＆ムーン","2018-08-03",50],["SM7","裂空のカリスマ","サン＆ムーン","2018-06-01",96],["SM6b","チャンピオンロード","サン＆ムーン","2018-05-30",66],["SM6a","ドラゴンストーム","サン＆ムーン","2018-04-06",53],["SM6","禁断の光","サン＆ムーン","2018-03-02",94],["SM5p","ウルトラフォース","サン＆ムーン","2018-01-19",50],["SM5S","ウルトラサン","サン＆ムーン","2017-12-08",66],["SM5M","ウルトラムーン","サン＆ムーン","2017-12-08",66],["SM4p","GXバトルブースト","サン＆ムーン","2017-10-20",114],["SM4S","覚醒の勇者","サン＆ムーン","2017-09-15",50],["SM4A","超次元の暴獣","サン＆ムーン","2017-09-15",50],["SM3p","ひかる伝説","サン＆ムーン","2017-07-15",72],["SM3H","闘う虹を見たか","サン＆ムーン","2017-06-16",51],["SM3N","光を喰らう闇","サン＆ムーン","2017-06-16",51],["SM2p","新たなる試練の向こう","サン＆ムーン","2017-04-21",49],["SM2L","アローラの月光","サン＆ムーン","2017-03-17",50],["SM2K","キミを待つ島々","サン＆ムーン","2017-03-17",50],["SM1p","サン＆ムーン","サン＆ムーン","2017-01-27",51],["SM1S","コレクションサン","サン＆ムーン","2016-12-09",60],["SM1M","コレクションムーン","サン＆ムーン","2016-12-09",60],["SM0","ピカチュウと新しい仲間たち","サン＆ムーン","2016-11-18",4],["CP6","ポケットモンスターカードゲーム 拡張パック 20th Anniversary","XY BREAK","2016-09-16",87],["CP5","冷酷の反逆者","XY BREAK","2016-07-16",36],["XY11b","冷酷の反逆者","XY BREAK","2016-06-17",54],["XY11a","爆熱の闘士","XY BREAK","2016-06-17",54],["CP4","プレミアムチャンピオンパック EX×M×BREAK","XY BREAK","2016-04-16",131],["XY10","めざめる超王","XY BREAK","2016-03-18",78],["CP3","ポケキュンコレクション","XY BREAK","2016-01-29",32],["XY9","破天の怒り","XY BREAK","2015-12-11",80],["XY8b","赤い閃光","XY BREAK","2015-09-26",59],["XY8a","青い衝撃","XY BREAK","2015-09-26",59],["CP2","伝説キラコレクション","XY","2015-07-18",27],["XY7","バンデットリング","XY","2015-06-20",81],["XY6","エメラルドブレイク","XY","2015-03-14",78],["CP1","マグマ団VSアクア団 ダブルクライシス","XY","2015-01-30",34],["XY5a","ガイアボルケーノ","XY","2014-12-13",70],["XY5b","タイダルストーム","XY","2014-12-13",70],["XY4","ファントムゲート","XY","2014-09-13",88],["XY3","ライジングフィスト","XY","2014-09-13",96],["XY2","ワイルドブレイズ","XY","2014-03-15",80],["XY1b","コレクションY","XY","2013-12-13",60],["XY1a","コレクションX","XY","2013-12-13",60],["L3","頂上大激突","LEGEND","2010-07-08",70],["LL","強化パック ロストリンク","LEGEND","2010-04-16",40],["L2","よみがえる伝説","LEGEND","2010-02-11",70],["L1a","ハートゴールドコレクション","LEGEND","2009-10-09",70],["L1b","ソウルシルバーコレクション","LEGEND","2009-10-09",70],["PCG10","ワールドチャンピオンズパック","PCG","2007-07-05",108],["PCG9","さいはての攻防","PCG","2006-06-29",68],["PCG8","きせきの結晶","PCG","2006-03-10",75],["PCG7","ホロンの幻影","PCG","2006-01-27",52],["PCG6","ホロンの研究塔","PCG","2005-10-28",86],["PCG5","まぼろしの森","PCG","2005-06-30",86],["PCG4","金の空、銀の海","PCG","2005-04-08",106],["PCG3","ロケット団の逆襲","PCG","2004-10-15",84],["PCG2","蒼空の激突","PCG","2004-07-01",82],["PCG1","伝説の飛翔","PCG","2004-04-09",82],["ADV5","とかれた封印","ADV","2004-01-16",83],["ADV4","強化拡張パックex1マグマVSアクア ふたつの野望","ADV","2003-10-24",80],["ADV3","天空の覇者","ADV","2003-06-25",54],["ADV2","砂漠のきせき","ADV","2003-04-18",53],["ADV1","拡張パック","ADV","2003-01-31",55],["E5","神秘なる山","ポケモンカードe","2002-10-04",88],["E4","裂けた大地","ポケモンカードe","2002-08-23",88],["E3","海からの風","ポケモンカードe","2002-05-24",87],["E2","地図にない町","ポケモンカードe","2002-03-08",92],["E1","基本拡張パック","ポケモンカードe","2001-12-01",128],["web1","ポケモンカード★web","web","2001-10-20",48],["VS1","ポケモンカード★VS","VS","2001-07-19",141],["neo4","闇、そして光へ...","ポケモンカード★neo","2001-04-20",113],["neo3","めざめる伝説","ポケモンカード★neo","2000-11-23",57],["neo2","遺跡をこえて...","ポケモンカード★neo","2000-07-07",56],["neo1","金、銀、新世界へ...","ポケモンカード★neo","2000-02-04",96],["PMCG6","闇からの挑戦","ポケットモンスターカードゲーム","1999-06-25",98],["PMCG5","リーダーズスタジアム","ポケットモンスターカードゲーム","1998-10-24",96],["PMCG4","ロケット団","ポケットモンスターカードゲーム","1997-11-21",65],["PMCG3","化石の秘密","ポケットモンスターカードゲーム","1997-06-21",48],["PMCG2","ポケモンジャングル","ポケットモンスターカードゲーム","1997-03-05",48],["PMCG1","拡張パック","ポケットモンスターカードゲーム","1996-10-20",102],["sm2+","新たなる試練の向こう","—","",49],["SM3+","ひかる伝説","—","",72],["SM1+","サン＆ムーン","—","",51],["SM4+","GXバトルブースト","—","",114],["SM5+","ウルトラフォース","—","",50]]};
+const JA_DESDE_LATIN = {"bulbasaur":"フシギダネ","ivysaur":"フシギソウ","venusaur":"フシギバナ","charmander":"ヒトカゲ","charmeleon":"リザード","charizard":"リザードン","squirtle":"ゼニガメ","wartortle":"カメール","blastoise":"カメックス","caterpie":"キャタピー","metapod":"トランセル","butterfree":"バタフリー","weedle":"ビードル","kakuna":"コクーン","beedrill":"スピアー","pidgey":"ポッポ","pidgeotto":"ピジョン","pidgeot":"ピジョット","rattata":"コラッタ","raticate":"ラッタ","spearow":"オニスズメ","fearow":"オニドリル","ekans":"アーボ","arbok":"アーボック","pikachu":"ピカチュウ","raichu":"ライチュウ","sandshrew":"サンド","sandslash":"サンドパン","nidoran":"ニドラン♀","nidorina":"ニドリーナ","nidoqueen":"ニドクイン","nidorino":"ニドリーノ","nidoking":"ニドキング","clefairy":"ピッピ","clefable":"ピクシー","vulpix":"ロコン","ninetales":"キュウコン","jigglypuff":"プリン","wigglytuff":"プクリン","zubat":"ズバット","golbat":"ゴルバット","oddish":"ナゾノクサ","gloom":"クサイハナ","vileplume":"ラフレシア","paras":"パラス","parasect":"パラセクト","venonat":"コンパン","venomoth":"モルフォン","diglett":"ディグダ","dugtrio":"ダグトリオ","meowth":"ニャース","persian":"ペルシアン","psyduck":"コダック","golduck":"ゴルダック","mankey":"マンキー","primeape":"オコリザル","growlithe":"ガーディ","arcanine":"ウインディ","poliwag":"ニョロモ","poliwhirl":"ニョロゾ","poliwrath":"ニョロボン","abra":"ケーシィ","kadabra":"ユンゲラー","alakazam":"フーディン","machop":"ワンリキー","machoke":"ゴーリキー","machamp":"カイリキー","bellsprout":"マダツボミ","weepinbell":"ウツドン","victreebel":"ウツボット","tentacool":"メノクラゲ","tentacruel":"ドククラゲ","geodude":"イシツブテ","graveler":"ゴローン","golem":"ゴローニャ","ponyta":"ポニータ","rapidash":"ギャロップ","slowpoke":"ヤドン","slowbro":"ヤドラン","magnemite":"コイル","magneton":"レアコイル","farfetchd":"カモネギ","doduo":"ドードー","dodrio":"ドードリオ","seel":"パウワウ","dewgong":"ジュゴン","grimer":"ベトベター","muk":"ベトベトン","shellder":"シェルダー","cloyster":"パルシェン","gastly":"ゴース","haunter":"ゴースト","gengar":"ゲンガー","onix":"イワーク","drowzee":"スリープ","hypno":"スリーパー","krabby":"クラブ","kingler":"キングラー","voltorb":"ビリリダマ","electrode":"マルマイン","exeggcute":"タマタマ","exeggutor":"ナッシー","cubone":"カラカラ","marowak":"ガラガラ","hitmonlee":"サワムラー","hitmonchan":"エビワラー","lickitung":"ベロリンガ","koffing":"ドガース","weezing":"マタドガス","rhyhorn":"サイホーン","rhydon":"サイドン","chansey":"ラッキー","tangela":"モンジャラ","kangaskhan":"ガルーラ","horsea":"タッツー","seadra":"シードラ","goldeen":"トサキント","seaking":"アズマオウ","staryu":"ヒトデマン","starmie":"スターミー","mrmime":"バリヤード","scyther":"ストライク","jynx":"ルージュラ","electabuzz":"エレブー","magmar":"ブーバー","pinsir":"カイロス","tauros":"ケンタロス","magikarp":"コイキング","gyarados":"ギャラドス","lapras":"ラプラス","ditto":"メタモン","eevee":"イーブイ","vaporeon":"シャワーズ","jolteon":"サンダース","flareon":"ブースター","porygon":"ポリゴン","omanyte":"オムナイト","omastar":"オムスター","kabuto":"カブト","kabutops":"カブトプス","aerodactyl":"プテラ","snorlax":"カビゴン","articuno":"フリーザー","zapdos":"サンダー","moltres":"ファイヤー","dratini":"ミニリュウ","dragonair":"ハクリュー","dragonite":"カイリュー","mewtwo":"ミュウツー","mew":"ミュウ","chikorita":"チコリータ","bayleef":"ベイリーフ","meganium":"メガニウム","cyndaquil":"ヒノアラシ","quilava":"マグマラシ","typhlosion":"バクフーン","totodile":"ワニノコ","croconaw":"アリゲイツ","feraligatr":"オーダイル","sentret":"オタチ","furret":"オオタチ","hoothoot":"ホーホー","noctowl":"ヨルノズク","ledyba":"レディバ","ledian":"レディアン","spinarak":"イトマル","ariados":"アリアドス","crobat":"クロバット","chinchou":"チョンチー","lanturn":"ランターン","pichu":"ピチュー","cleffa":"ピィ","igglybuff":"ププリン","togepi":"トゲピー","togetic":"トゲチック","natu":"ネイティ","xatu":"ネイティオ","mareep":"メリープ","flaaffy":"モココ","ampharos":"デンリュウ","bellossom":"キレイハナ","marill":"マリル","azumarill":"マリルリ","sudowoodo":"ウソッキー","politoed":"ニョロトノ","hoppip":"ハネッコ","skiploom":"ポポッコ","jumpluff":"ワタッコ","aipom":"エイパム","sunkern":"ヒマナッツ","sunflora":"キマワリ","yanma":"ヤンヤンマ","wooper":"ウパー","quagsire":"ヌオー","espeon":"エーフィ","umbreon":"ブラッキー","murkrow":"ヤミカラス","slowking":"ヤドキング","misdreavus":"ムウマ","unown":"アンノーン","wobbuffet":"ソーナンス","girafarig":"キリンリキ","pineco":"クヌギダマ","forretress":"フォレトス","dunsparce":"ノコッチ","gligar":"グライガー","steelix":"ハガネール","snubbull":"ブルー","granbull":"グランブル","qwilfish":"ハリーセン","scizor":"ハッサム","shuckle":"ツボツボ","heracross":"ヘラクロス","sneasel":"ニューラ","teddiursa":"ヒメグマ","ursaring":"リングマ","slugma":"マグマッグ","magcargo":"マグカルゴ","swinub":"ウリムー","piloswine":"イノムー","corsola":"サニーゴ","remoraid":"テッポウオ","octillery":"オクタン","delibird":"デリバード","mantine":"マンタイン","skarmory":"エアームド","houndour":"デルビル","houndoom":"ヘルガー","kingdra":"キングドラ","phanpy":"ゴマゾウ","donphan":"ドンファン","porygon2":"ポリゴン２","stantler":"オドシシ","smeargle":"ドーブル","tyrogue":"バルキー","hitmontop":"カポエラー","smoochum":"ムチュール","elekid":"エレキッド","magby":"ブビィ","miltank":"ミルタンク","blissey":"ハピナス","raikou":"ライコウ","entei":"エンテイ","suicune":"スイクン","larvitar":"ヨーギラス","pupitar":"サナギラス","tyranitar":"バンギラス","lugia":"ルギア","hooh":"ホウオウ","celebi":"セレビィ","treecko":"キモリ","grovyle":"ジュプトル","sceptile":"ジュカイン","torchic":"アチャモ","combusken":"ワカシャモ","blaziken":"バシャーモ","mudkip":"ミズゴロウ","marshtomp":"ヌマクロー","swampert":"ラグラージ","poochyena":"ポチエナ","mightyena":"グラエナ","zigzagoon":"ジグザグマ","linoone":"マッスグマ","wurmple":"ケムッソ","silcoon":"カラサリス","beautifly":"アゲハント","cascoon":"マユルド","dustox":"ドクケイル","lotad":"ハスボー","lombre":"ハスブレロ","ludicolo":"ルンパッパ","seedot":"タネボー","nuzleaf":"コノハナ","shiftry":"ダーテング","taillow":"スバメ","swellow":"オオスバメ","wingull":"キャモメ","pelipper":"ペリッパー","ralts":"ラルトス","kirlia":"キルリア","gardevoir":"サーナイト","surskit":"アメタマ","masquerain":"アメモース","shroomish":"キノココ","breloom":"キノガッサ","slakoth":"ナマケロ","vigoroth":"ヤルキモノ","slaking":"ケッキング","nincada":"ツチニン","ninjask":"テッカニン","shedinja":"ヌケニン","whismur":"ゴニョニョ","loudred":"ドゴーム","exploud":"バクオング","makuhita":"マクノシタ","hariyama":"ハリテヤマ","azurill":"ルリリ","nosepass":"ノズパス","skitty":"エネコ","delcatty":"エネコロロ","sableye":"ヤミラミ","mawile":"クチート","aron":"ココドラ","lairon":"コドラ","aggron":"ボスゴドラ","meditite":"アサナン","medicham":"チャーレム","electrike":"ラクライ","manectric":"ライボルト","plusle":"プラスル","minun":"マイナン","volbeat":"バルビート","illumise":"イルミーゼ","roselia":"ロゼリア","gulpin":"ゴクリン","swalot":"マルノーム","carvanha":"キバニア","sharpedo":"サメハダー","wailmer":"ホエルコ","wailord":"ホエルオー","numel":"ドンメル","camerupt":"バクーダ","torkoal":"コータス","spoink":"バネブー","grumpig":"ブーピッグ","spinda":"パッチール","trapinch":"ナックラー","vibrava":"ビブラーバ","flygon":"フライゴン","cacnea":"サボネア","cacturne":"ノクタス","swablu":"チルット","altaria":"チルタリス","zangoose":"ザングース","seviper":"ハブネーク","lunatone":"ルナトーン","solrock":"ソルロック","barboach":"ドジョッチ","whiscash":"ナマズン","corphish":"ヘイガニ","crawdaunt":"シザリガー","baltoy":"ヤジロン","claydol":"ネンドール","lileep":"リリーラ","cradily":"ユレイドル","anorith":"アノプス","armaldo":"アーマルド","feebas":"ヒンバス","milotic":"ミロカロス","castform":"ポワルン","kecleon":"カクレオン","shuppet":"カゲボウズ","banette":"ジュペッタ","duskull":"ヨマワル","dusclops":"サマヨール","tropius":"トロピウス","chimecho":"チリーン","absol":"アブソル","wynaut":"ソーナノ","snorunt":"ユキワラシ","glalie":"オニゴーリ","spheal":"タマザラシ","sealeo":"トドグラー","walrein":"トドゼルガ","clamperl":"パールル","huntail":"ハンテール","gorebyss":"サクラビス","relicanth":"ジーランス","luvdisc":"ラブカス","bagon":"タツベイ","shelgon":"コモルー","salamence":"ボーマンダ","beldum":"ダンバル","metang":"メタング","metagross":"メタグロス","regirock":"レジロック","regice":"レジアイス","registeel":"レジスチル","latias":"ラティアス","latios":"ラティオス","kyogre":"カイオーガ","groudon":"グラードン","rayquaza":"レックウザ","jirachi":"ジラーチ","deoxys":"デオキシス","turtwig":"ナエトル","grotle":"ハヤシガメ","torterra":"ドダイトス","chimchar":"ヒコザル","monferno":"モウカザル","infernape":"ゴウカザル","piplup":"ポッチャマ","prinplup":"ポッタイシ","empoleon":"エンペルト","starly":"ムックル","staravia":"ムクバード","staraptor":"ムクホーク","bidoof":"ビッパ","bibarel":"ビーダル","kricketot":"コロボーシ","kricketune":"コロトック","shinx":"コリンク","luxio":"ルクシオ","luxray":"レントラー","budew":"スボミー","roserade":"ロズレイド","cranidos":"ズガイドス","rampardos":"ラムパルド","shieldon":"タテトプス","bastiodon":"トリデプス","burmy":"ミノムッチ","wormadam":"ミノマダム","mothim":"ガーメイル","combee":"ミツハニー","vespiquen":"ビークイン","pachirisu":"パチリス","buizel":"ブイゼル","floatzel":"フローゼル","cherubi":"チェリンボ","cherrim":"チェリム","shellos":"カラナクシ","gastrodon":"トリトドン","ambipom":"エテボース","drifloon":"フワンテ","drifblim":"フワライド","buneary":"ミミロル","lopunny":"ミミロップ","mismagius":"ムウマージ","honchkrow":"ドンカラス","glameow":"ニャルマー","purugly":"ブニャット","chingling":"リーシャン","stunky":"スカンプー","skuntank":"スカタンク","bronzor":"ドーミラー","bronzong":"ドータクン","bonsly":"ウソハチ","mimejr":"マネネ","happiny":"ピンプク","chatot":"ペラップ","spiritomb":"ミカルゲ","gible":"フカマル","gabite":"ガバイト","garchomp":"ガブリアス","munchlax":"ゴンベ","riolu":"リオル","lucario":"ルカリオ","hippopotas":"ヒポポタス","hippowdon":"カバルドン","skorupi":"スコルピ","drapion":"ドラピオン","croagunk":"グレッグル","toxicroak":"ドクロッグ","carnivine":"マスキッパ","finneon":"ケイコウオ","lumineon":"ネオラント","mantyke":"タマンタ","snover":"ユキカブリ","abomasnow":"ユキノオー","weavile":"マニューラ","magnezone":"ジバコイル","lickilicky":"ベロベルト","rhyperior":"ドサイドン","tangrowth":"モジャンボ","electivire":"エレキブル","magmortar":"ブーバーン","togekiss":"トゲキッス","yanmega":"メガヤンマ","leafeon":"リーフィア","glaceon":"グレイシア","gliscor":"グライオン","mamoswine":"マンムー","porygonz":"ポリゴンＺ","gallade":"エルレイド","probopass":"ダイノーズ","dusknoir":"ヨノワール","froslass":"ユキメノコ","rotom":"ロトム","uxie":"ユクシー","mesprit":"エムリット","azelf":"アグノム","dialga":"ディアルガ","palkia":"パルキア","heatran":"ヒードラン","regigigas":"レジギガス","giratina":"ギラティナ","cresselia":"クレセリア","phione":"フィオネ","manaphy":"マナフィ","darkrai":"ダークライ","shaymin":"シェイミ","arceus":"アルセウス","victini":"ビクティニ","snivy":"ツタージャ","servine":"ジャノビー","serperior":"ジャローダ","tepig":"ポカブ","pignite":"チャオブー","emboar":"エンブオー","oshawott":"ミジュマル","dewott":"フタチマル","samurott":"ダイケンキ","patrat":"ミネズミ","watchog":"ミルホッグ","lillipup":"ヨーテリー","herdier":"ハーデリア","stoutland":"ムーランド","purrloin":"チョロネコ","liepard":"レパルダス","pansage":"ヤナップ","simisage":"ヤナッキー","pansear":"バオップ","simisear":"バオッキー","panpour":"ヒヤップ","simipour":"ヒヤッキー","munna":"ムンナ","musharna":"ムシャーナ","pidove":"マメパト","tranquill":"ハトーボー","unfezant":"ケンホロウ","blitzle":"シママ","zebstrika":"ゼブライカ","roggenrola":"ダンゴロ","boldore":"ガントル","gigalith":"ギガイアス","woobat":"コロモリ","swoobat":"ココロモリ","drilbur":"モグリュー","excadrill":"ドリュウズ","audino":"タブンネ","timburr":"ドッコラー","gurdurr":"ドテッコツ","conkeldurr":"ローブシン","tympole":"オタマロ","palpitoad":"ガマガル","seismitoad":"ガマゲロゲ","throh":"ナゲキ","sawk":"ダゲキ","sewaddle":"クルミル","swadloon":"クルマユ","leavanny":"ハハコモリ","venipede":"フシデ","whirlipede":"ホイーガ","scolipede":"ペンドラー","cottonee":"モンメン","whimsicott":"エルフーン","petilil":"チュリネ","lilligant":"ドレディア","basculin":"バスラオ","sandile":"メグロコ","krokorok":"ワルビル","krookodile":"ワルビアル","darumaka":"ダルマッカ","darmanitan":"ヒヒダルマ","maractus":"マラカッチ","dwebble":"イシズマイ","crustle":"イワパレス","scraggy":"ズルッグ","scrafty":"ズルズキン","sigilyph":"シンボラー","yamask":"デスマス","cofagrigus":"デスカーン","tirtouga":"プロトーガ","carracosta":"アバゴーラ","archen":"アーケン","archeops":"アーケオス","trubbish":"ヤブクロン","garbodor":"ダストダス","zorua":"ゾロア","zoroark":"ゾロアーク","minccino":"チラーミィ","cinccino":"チラチーノ","gothita":"ゴチム","gothorita":"ゴチミル","gothitelle":"ゴチルゼル","solosis":"ユニラン","duosion":"ダブラン","reuniclus":"ランクルス","ducklett":"コアルヒー","swanna":"スワンナ","vanillite":"バニプッチ","vanillish":"バニリッチ","vanilluxe":"バイバニラ","deerling":"シキジカ","sawsbuck":"メブキジカ","emolga":"エモンガ","karrablast":"カブルモ","escavalier":"シュバルゴ","foongus":"タマゲタケ","amoonguss":"モロバレル","frillish":"プルリル","jellicent":"ブルンゲル","alomomola":"ママンボウ","joltik":"バチュル","galvantula":"デンチュラ","ferroseed":"テッシード","ferrothorn":"ナットレイ","klink":"ギアル","klang":"ギギアル","klinklang":"ギギギアル","tynamo":"シビシラス","eelektrik":"シビビール","eelektross":"シビルドン","elgyem":"リグレー","beheeyem":"オーベム","litwick":"ヒトモシ","lampent":"ランプラー","chandelure":"シャンデラ","axew":"キバゴ","fraxure":"オノンド","haxorus":"オノノクス","cubchoo":"クマシュン","beartic":"ツンベアー","cryogonal":"フリージオ","shelmet":"チョボマキ","accelgor":"アギルダー","stunfisk":"マッギョ","mienfoo":"コジョフー","mienshao":"コジョンド","druddigon":"クリムガン","golett":"ゴビット","golurk":"ゴルーグ","pawniard":"コマタナ","bisharp":"キリキザン","bouffalant":"バッフロン","rufflet":"ワシボン","braviary":"ウォーグル","vullaby":"バルチャイ","mandibuzz":"バルジーナ","heatmor":"クイタラン","durant":"アイアント","deino":"モノズ","zweilous":"ジヘッド","hydreigon":"サザンドラ","larvesta":"メラルバ","volcarona":"ウルガモス","cobalion":"コバルオン","terrakion":"テラキオン","virizion":"ビリジオン","tornadus":"トルネロス","thundurus":"ボルトロス","reshiram":"レシラム","zekrom":"ゼクロム","landorus":"ランドロス","kyurem":"キュレム","keldeo":"ケルディオ","meloetta":"メロエッタ","genesect":"ゲノセクト","chespin":"ハリマロン","quilladin":"ハリボーグ","chesnaught":"ブリガロン","fennekin":"フォッコ","braixen":"テールナー","delphox":"マフォクシー","froakie":"ケロマツ","frogadier":"ゲコガシラ","greninja":"ゲッコウガ","bunnelby":"ホルビー","diggersby":"ホルード","fletchling":"ヤヤコマ","fletchinder":"ヒノヤコマ","talonflame":"ファイアロー","scatterbug":"コフキムシ","spewpa":"コフーライ","vivillon":"ビビヨン","litleo":"シシコ","pyroar":"カエンジシ","flabebe":"フラベベ","floette":"フラエッテ","florges":"フラージェス","skiddo":"メェークル","gogoat":"ゴーゴート","pancham":"ヤンチャム","pangoro":"ゴロンダ","furfrou":"トリミアン","espurr":"ニャスパー","meowstic":"ニャオニクス","honedge":"ヒトツキ","doublade":"ニダンギル","aegislash":"ギルガルド","spritzee":"シュシュプ","aromatisse":"フレフワン","swirlix":"ペロッパフ","slurpuff":"ペロリーム","inkay":"マーイーカ","malamar":"カラマネロ","binacle":"カメテテ","barbaracle":"ガメノデス","skrelp":"クズモー","dragalge":"ドラミドロ","clauncher":"ウデッポウ","clawitzer":"ブロスター","helioptile":"エリキテル","heliolisk":"エレザード","tyrunt":"チゴラス","tyrantrum":"ガチゴラス","amaura":"アマルス","aurorus":"アマルルガ","sylveon":"ニンフィア","hawlucha":"ルチャブル","dedenne":"デデンネ","carbink":"メレシー","goomy":"ヌメラ","sliggoo":"ヌメイル","goodra":"ヌメルゴン","klefki":"クレッフィ","phantump":"ボクレー","trevenant":"オーロット","pumpkaboo":"バケッチャ","gourgeist":"パンプジン","bergmite":"カチコール","avalugg":"クレベース","noibat":"オンバット","noivern":"オンバーン","xerneas":"ゼルネアス","yveltal":"イベルタル","zygarde":"ジガルデ","diancie":"ディアンシー","hoopa":"フーパ","volcanion":"ボルケニオン","rowlet":"モクロー","dartrix":"フクスロー","decidueye":"ジュナイパー","litten":"ニャビー","torracat":"ニャヒート","incineroar":"ガオガエン","popplio":"アシマリ","brionne":"オシャマリ","primarina":"アシレーヌ","pikipek":"ツツケラ","trumbeak":"ケララッパ","toucannon":"ドデカバシ","yungoos":"ヤングース","gumshoos":"デカグース","grubbin":"アゴジムシ","charjabug":"デンヂムシ","vikavolt":"クワガノン","crabrawler":"マケンカニ","crabominable":"ケケンカニ","oricorio":"オドリドリ","cutiefly":"アブリー","ribombee":"アブリボン","rockruff":"イワンコ","lycanroc":"ルガルガン","wishiwashi":"ヨワシ","mareanie":"ヒドイデ","toxapex":"ドヒドイデ","mudbray":"ドロバンコ","mudsdale":"バンバドロ","dewpider":"シズクモ","araquanid":"オニシズクモ","fomantis":"カリキリ","lurantis":"ラランテス","morelull":"ネマシュ","shiinotic":"マシェード","salandit":"ヤトウモリ","salazzle":"エンニュート","stufful":"ヌイコグマ","bewear":"キテルグマ","bounsweet":"アマカジ","steenee":"アママイコ","tsareena":"アマージョ","comfey":"キュワワー","oranguru":"ヤレユータン","passimian":"ナゲツケサル","wimpod":"コソクムシ","golisopod":"グソクムシャ","sandygast":"スナバァ","palossand":"シロデスナ","pyukumuku":"ナマコブシ","codigocero":"タイプ：ヌル","typenull":"タイプ：ヌル","silvally":"シルヴァディ","minior":"メテノ","komala":"ネッコアラ","turtonator":"バクガメス","togedemaru":"トゲデマル","mimikyu":"ミミッキュ","bruxish":"ハギギシリ","drampa":"ジジーロン","dhelmise":"ダダリン","jangmoo":"ジャラコ","hakamoo":"ジャランゴ","kommoo":"ジャラランガ","tapukoko":"カプ・コケコ","tapulele":"カプ・テテフ","tapubulu":"カプ・ブルル","tapufini":"カプ・レヒレ","cosmog":"コスモッグ","cosmoem":"コスモウム","solgaleo":"ソルガレオ","lunala":"ルナアーラ","nihilego":"ウツロイド","buzzwole":"マッシブーン","pheromosa":"フェローチェ","xurkitree":"デンジュモク","celesteela":"テッカグヤ","kartana":"カミツルギ","guzzlord":"アクジキング","necrozma":"ネクロズマ","magearna":"マギアナ","marshadow":"マーシャドー","poipole":"ベベノム","naganadel":"アーゴヨン","stakataka":"ツンデツンデ","blacephalon":"ズガドーン","zeraora":"ゼラオラ","meltan":"メルタン","melmetal":"メルメタル","grookey":"サルノリ","thwackey":"バチンキー","rillaboom":"ゴリランダー","scorbunny":"ヒバニー","raboot":"ラビフット","cinderace":"エースバーン","sobble":"メッソン","drizzile":"ジメレオン","inteleon":"インテレオン","skwovet":"ホシガリス","greedent":"ヨクバリス","rookidee":"ココガラ","corvisquire":"アオガラス","corviknight":"アーマーガア","blipbug":"サッチムシ","dottler":"レドームシ","orbeetle":"イオルブ","nickit":"クスネ","thievul":"フォクスライ","gossifleur":"ヒメンカ","eldegoss":"ワタシラガ","wooloo":"ウールー","dubwool":"バイウールー","chewtle":"カムカメ","drednaw":"カジリガメ","yamper":"ワンパチ","boltund":"パルスワン","rolycoly":"タンドン","carkol":"トロッゴン","coalossal":"セキタンザン","applin":"カジッチュ","flapple":"アップリュー","appletun":"タルップル","silicobra":"スナヘビ","sandaconda":"サダイジャ","cramorant":"ウッウ","arrokuda":"サシカマス","barraskewda":"カマスジョー","toxel":"エレズン","toxtricity":"ストリンダー","sizzlipede":"ヤクデ","centiskorch":"マルヤクデ","clobbopus":"タタッコ","grapploct":"オトスパス","sinistea":"ヤバチャ","polteageist":"ポットデス","hatenna":"ミブリム","hattrem":"テブリム","hatterene":"ブリムオン","impidimp":"ベロバー","morgrem":"ギモー","grimmsnarl":"オーロンゲ","obstagoon":"タチフサグマ","perrserker":"ニャイキング","cursola":"サニゴーン","sirfetchd":"ネギガナイト","mrrime":"バリコオル","runerigus":"デスバーン","milcery":"マホミル","alcremie":"マホイップ","falinks":"タイレーツ","pincurchin":"バチンウニ","snom":"ユキハミ","frosmoth":"モスノウ","stonjourner":"イシヘンジン","eiscue":"コオリッポ","indeedee":"イエッサン","morpeko":"モルペコ","cufant":"ゾウドウ","copperajah":"ダイオウドウ","dracozolt":"パッチラゴン","arctozolt":"パッチルドン","dracovish":"ウオノラゴン","arctovish":"ウオチルドン","duraludon":"ジュラルドン","dreepy":"ドラメシヤ","drakloak":"ドロンチ","dragapult":"ドラパルト","zacian":"ザシアン","zamazenta":"ザマゼンタ","eternatus":"ムゲンダイナ","kubfu":"ダクマ","urshifu":"ウーラオス","zarude":"ザルード","regieleki":"レジエレキ","regidrago":"レジドラゴ","glastrier":"ブリザポス","spectrier":"レイスポス","calyrex":"バドレックス","wyrdeer":"アヤシシ","kleavor":"バサギリ","ursaluna":"ガチグマ","basculegion":"イダイトウ","sneasler":"オオニューラ","overqwil":"ハリーマン","enamorus":"ラブトロス","sprigatito":"ニャオハ","floragato":"ニャローテ","meowscarada":"マスカーニャ","fuecoco":"ホゲータ","crocalor":"アチゲータ","skeledirge":"ラウドボーン","quaxly":"クワッス","quaxwell":"ウェルカモ","quaquaval":"ウェーニバル","lechonk":"グルトン","oinkologne":"パフュートン","tarountula":"タマンチュラ","spidops":"ワナイダー","nymble":"マメバッタ","lokix":"エクスレッグ","pawmi":"パモ","pawmo":"パモット","pawmot":"パーモット","tandemaus":"ワッカネズミ","maushold":"イッカネズミ","fidough":"パピモッチ","dachsbun":"バウッツェル","smoliv":"ミニーブ","dolliv":"オリーニョ","arboliva":"オリーヴァ","squawkabilly":"イキリンコ","nacli":"コジオ","naclstack":"ジオヅム","garganacl":"キョジオーン","charcadet":"カルボウ","armarouge":"グレンアルマ","ceruledge":"ソウブレイズ","tadbulb":"ズピカ","bellibolt":"ハラバリー","wattrel":"カイデン","kilowattrel":"タイカイデン","maschiff":"オラチフ","mabosstiff":"マフィティフ","shroodle":"シルシュルー","grafaiai":"タギングル","bramblin":"アノクサ","brambleghast":"アノホラグサ","toedscool":"ノノクラゲ","toedscruel":"リククラゲ","klawf":"ガケガニ","capsakid":"カプサイジ","scovillain":"スコヴィラン","rellor":"シガロコ","rabsca":"ベラカス","flittle":"ヒラヒナ","espathra":"クエスパトラ","tinkatink":"カヌチャン","tinkatuff":"ナカヌチャン","tinkaton":"デカヌチャン","wiglett":"ウミディグダ","wugtrio":"ウミトリオ","bombirdier":"オトシドリ","finizen":"ナミイルカ","palafin":"イルカマン","varoom":"ブロロン","revavroom":"ブロロローム","cyclizar":"モトトカゲ","orthworm":"ミミズズ","glimmet":"キラーメ","glimmora":"キラフロル","greavard":"ボチ","houndstone":"ハカドッグ","flamigo":"カラミンゴ","cetoddle":"アルクジラ","cetitan":"ハルクジラ","veluza":"ミガルーサ","dondozo":"ヘイラッシャ","tatsugiri":"シャリタツ","annihilape":"コノヨザル","clodsire":"ドオー","farigiraf":"リキキリン","dudunsparce":"ノココッチ","kingambit":"ドドゲザン","colmilargo":"イダイナキバ","greattusk":"イダイナキバ","colagrito":"サケブシッポ","screamtail":"サケブシッポ","furioseta":"アラブルタケ","brutebonnet":"アラブルタケ","melenaleteo":"ハバタクカミ","fluttermane":"ハバタクカミ","reptalada":"チヲハウハネ","slitherwing":"チヲハウハネ","pelarena":"スナノケガワ","sandyshocks":"スナノケガワ","ferrodada":"テツノワダチ","irontreads":"テツノワダチ","ferrosaco":"テツノツツミ","ironbundle":"テツノツツミ","ferropalmas":"テツノカイナ","ironhands":"テツノカイナ","ferrocuello":"テツノコウベ","ironjugulis":"テツノコウベ","ferropolilla":"テツノドクガ","ironmoth":"テツノドクガ","ferropuas":"テツノイバラ","ironthorns":"テツノイバラ","frigibax":"セビエ","arctibax":"セゴール","baxcalibur":"セグレイブ","gimmighoul":"コレクレー","gholdengo":"サーフゴー","wochien":"チオンジェン","chienpao":"パオジアン","tinglu":"ディンルー","chiyu":"イーユイ","bramaluna":"トドロクツキ","roaringmoon":"トドロクツキ","ferropaladin":"テツノブジン","ironvaliant":"テツノブジン","koraidon":"コライドン","miraidon":"ミライドン","ondulagua":"ウネルミナモ","walkingwake":"ウネルミナモ","ferroverdor":"テツノイサハ","ironleaves":"テツノイサハ","dipplin":"カミッチュ","poltchageist":"チャデス","sinistcha":"ヤバソチャ","okidogi":"イイネイヌ","munkidori":"マシマシラ","fezandipiti":"キチキギス","ogerpon":"オーガポン","archaludon":"ブリジュラス","hydrapple":"カミツオロチ","flamariete":"ウガツホムラ","gougingfire":"ウガツホムラ","electrofuria":"タケルライコ","ragingbolt":"タケルライコ","ferromole":"テツノイワオ","ironboulder":"テツノイワオ","ferrotesta":"テツノカシラ","ironcrown":"テツノカシラ","terapagos":"テラパゴス","pecharunt":"モモワロウ"};
+const LATIN_DESDE_JA = {"フシギダネ":"Bulbasaur","フシギソウ":"Ivysaur","フシギバナ":"Venusaur","ヒトカゲ":"Charmander","リザード":"Charmeleon","リザードン":"Charizard","ゼニガメ":"Squirtle","カメール":"Wartortle","カメックス":"Blastoise","キャタピー":"Caterpie","トランセル":"Metapod","バタフリー":"Butterfree","ビードル":"Weedle","コクーン":"Kakuna","スピアー":"Beedrill","ポッポ":"Pidgey","ピジョン":"Pidgeotto","ピジョット":"Pidgeot","コラッタ":"Rattata","ラッタ":"Raticate","オニスズメ":"Spearow","オニドリル":"Fearow","アーボ":"Ekans","アーボック":"Arbok","ピカチュウ":"Pikachu","ライチュウ":"Raichu","サンド":"Sandshrew","サンドパン":"Sandslash","ニドラン♀":"Nidoran♀","ニドリーナ":"Nidorina","ニドクイン":"Nidoqueen","ニドラン♂":"Nidoran♂","ニドリーノ":"Nidorino","ニドキング":"Nidoking","ピッピ":"Clefairy","ピクシー":"Clefable","ロコン":"Vulpix","キュウコン":"Ninetales","プリン":"Jigglypuff","プクリン":"Wigglytuff","ズバット":"Zubat","ゴルバット":"Golbat","ナゾノクサ":"Oddish","クサイハナ":"Gloom","ラフレシア":"Vileplume","パラス":"Paras","パラセクト":"Parasect","コンパン":"Venonat","モルフォン":"Venomoth","ディグダ":"Diglett","ダグトリオ":"Dugtrio","ニャース":"Meowth","ペルシアン":"Persian","コダック":"Psyduck","ゴルダック":"Golduck","マンキー":"Mankey","オコリザル":"Primeape","ガーディ":"Growlithe","ウインディ":"Arcanine","ニョロモ":"Poliwag","ニョロゾ":"Poliwhirl","ニョロボン":"Poliwrath","ケーシィ":"Abra","ユンゲラー":"Kadabra","フーディン":"Alakazam","ワンリキー":"Machop","ゴーリキー":"Machoke","カイリキー":"Machamp","マダツボミ":"Bellsprout","ウツドン":"Weepinbell","ウツボット":"Victreebel","メノクラゲ":"Tentacool","ドククラゲ":"Tentacruel","イシツブテ":"Geodude","ゴローン":"Graveler","ゴローニャ":"Golem","ポニータ":"Ponyta","ギャロップ":"Rapidash","ヤドン":"Slowpoke","ヤドラン":"Slowbro","コイル":"Magnemite","レアコイル":"Magneton","カモネギ":"Farfetch’d","ドードー":"Doduo","ドードリオ":"Dodrio","パウワウ":"Seel","ジュゴン":"Dewgong","ベトベター":"Grimer","ベトベトン":"Muk","シェルダー":"Shellder","パルシェン":"Cloyster","ゴース":"Gastly","ゴースト":"Haunter","ゲンガー":"Gengar","イワーク":"Onix","スリープ":"Drowzee","スリーパー":"Hypno","クラブ":"Krabby","キングラー":"Kingler","ビリリダマ":"Voltorb","マルマイン":"Electrode","タマタマ":"Exeggcute","ナッシー":"Exeggutor","カラカラ":"Cubone","ガラガラ":"Marowak","サワムラー":"Hitmonlee","エビワラー":"Hitmonchan","ベロリンガ":"Lickitung","ドガース":"Koffing","マタドガス":"Weezing","サイホーン":"Rhyhorn","サイドン":"Rhydon","ラッキー":"Chansey","モンジャラ":"Tangela","ガルーラ":"Kangaskhan","タッツー":"Horsea","シードラ":"Seadra","トサキント":"Goldeen","アズマオウ":"Seaking","ヒトデマン":"Staryu","スターミー":"Starmie","バリヤード":"Mr. Mime","ストライク":"Scyther","ルージュラ":"Jynx","エレブー":"Electabuzz","ブーバー":"Magmar","カイロス":"Pinsir","ケンタロス":"Tauros","コイキング":"Magikarp","ギャラドス":"Gyarados","ラプラス":"Lapras","メタモン":"Ditto","イーブイ":"Eevee","シャワーズ":"Vaporeon","サンダース":"Jolteon","ブースター":"Flareon","ポリゴン":"Porygon","オムナイト":"Omanyte","オムスター":"Omastar","カブト":"Kabuto","カブトプス":"Kabutops","プテラ":"Aerodactyl","カビゴン":"Snorlax","フリーザー":"Articuno","サンダー":"Zapdos","ファイヤー":"Moltres","ミニリュウ":"Dratini","ハクリュー":"Dragonair","カイリュー":"Dragonite","ミュウツー":"Mewtwo","ミュウ":"Mew","チコリータ":"Chikorita","ベイリーフ":"Bayleef","メガニウム":"Meganium","ヒノアラシ":"Cyndaquil","マグマラシ":"Quilava","バクフーン":"Typhlosion","ワニノコ":"Totodile","アリゲイツ":"Croconaw","オーダイル":"Feraligatr","オタチ":"Sentret","オオタチ":"Furret","ホーホー":"Hoothoot","ヨルノズク":"Noctowl","レディバ":"Ledyba","レディアン":"Ledian","イトマル":"Spinarak","アリアドス":"Ariados","クロバット":"Crobat","チョンチー":"Chinchou","ランターン":"Lanturn","ピチュー":"Pichu","ピィ":"Cleffa","ププリン":"Igglybuff","トゲピー":"Togepi","トゲチック":"Togetic","ネイティ":"Natu","ネイティオ":"Xatu","メリープ":"Mareep","モココ":"Flaaffy","デンリュウ":"Ampharos","キレイハナ":"Bellossom","マリル":"Marill","マリルリ":"Azumarill","ウソッキー":"Sudowoodo","ニョロトノ":"Politoed","ハネッコ":"Hoppip","ポポッコ":"Skiploom","ワタッコ":"Jumpluff","エイパム":"Aipom","ヒマナッツ":"Sunkern","キマワリ":"Sunflora","ヤンヤンマ":"Yanma","ウパー":"Wooper","ヌオー":"Quagsire","エーフィ":"Espeon","ブラッキー":"Umbreon","ヤミカラス":"Murkrow","ヤドキング":"Slowking","ムウマ":"Misdreavus","アンノーン":"Unown","ソーナンス":"Wobbuffet","キリンリキ":"Girafarig","クヌギダマ":"Pineco","フォレトス":"Forretress","ノコッチ":"Dunsparce","グライガー":"Gligar","ハガネール":"Steelix","ブルー":"Snubbull","グランブル":"Granbull","ハリーセン":"Qwilfish","ハッサム":"Scizor","ツボツボ":"Shuckle","ヘラクロス":"Heracross","ニューラ":"Sneasel","ヒメグマ":"Teddiursa","リングマ":"Ursaring","マグマッグ":"Slugma","マグカルゴ":"Magcargo","ウリムー":"Swinub","イノムー":"Piloswine","サニーゴ":"Corsola","テッポウオ":"Remoraid","オクタン":"Octillery","デリバード":"Delibird","マンタイン":"Mantine","エアームド":"Skarmory","デルビル":"Houndour","ヘルガー":"Houndoom","キングドラ":"Kingdra","ゴマゾウ":"Phanpy","ドンファン":"Donphan","ポリゴン２":"Porygon2","オドシシ":"Stantler","ドーブル":"Smeargle","バルキー":"Tyrogue","カポエラー":"Hitmontop","ムチュール":"Smoochum","エレキッド":"Elekid","ブビィ":"Magby","ミルタンク":"Miltank","ハピナス":"Blissey","ライコウ":"Raikou","エンテイ":"Entei","スイクン":"Suicune","ヨーギラス":"Larvitar","サナギラス":"Pupitar","バンギラス":"Tyranitar","ルギア":"Lugia","ホウオウ":"Ho-Oh","セレビィ":"Celebi","キモリ":"Treecko","ジュプトル":"Grovyle","ジュカイン":"Sceptile","アチャモ":"Torchic","ワカシャモ":"Combusken","バシャーモ":"Blaziken","ミズゴロウ":"Mudkip","ヌマクロー":"Marshtomp","ラグラージ":"Swampert","ポチエナ":"Poochyena","グラエナ":"Mightyena","ジグザグマ":"Zigzagoon","マッスグマ":"Linoone","ケムッソ":"Wurmple","カラサリス":"Silcoon","アゲハント":"Beautifly","マユルド":"Cascoon","ドクケイル":"Dustox","ハスボー":"Lotad","ハスブレロ":"Lombre","ルンパッパ":"Ludicolo","タネボー":"Seedot","コノハナ":"Nuzleaf","ダーテング":"Shiftry","スバメ":"Taillow","オオスバメ":"Swellow","キャモメ":"Wingull","ペリッパー":"Pelipper","ラルトス":"Ralts","キルリア":"Kirlia","サーナイト":"Gardevoir","アメタマ":"Surskit","アメモース":"Masquerain","キノココ":"Shroomish","キノガッサ":"Breloom","ナマケロ":"Slakoth","ヤルキモノ":"Vigoroth","ケッキング":"Slaking","ツチニン":"Nincada","テッカニン":"Ninjask","ヌケニン":"Shedinja","ゴニョニョ":"Whismur","ドゴーム":"Loudred","バクオング":"Exploud","マクノシタ":"Makuhita","ハリテヤマ":"Hariyama","ルリリ":"Azurill","ノズパス":"Nosepass","エネコ":"Skitty","エネコロロ":"Delcatty","ヤミラミ":"Sableye","クチート":"Mawile","ココドラ":"Aron","コドラ":"Lairon","ボスゴドラ":"Aggron","アサナン":"Meditite","チャーレム":"Medicham","ラクライ":"Electrike","ライボルト":"Manectric","プラスル":"Plusle","マイナン":"Minun","バルビート":"Volbeat","イルミーゼ":"Illumise","ロゼリア":"Roselia","ゴクリン":"Gulpin","マルノーム":"Swalot","キバニア":"Carvanha","サメハダー":"Sharpedo","ホエルコ":"Wailmer","ホエルオー":"Wailord","ドンメル":"Numel","バクーダ":"Camerupt","コータス":"Torkoal","バネブー":"Spoink","ブーピッグ":"Grumpig","パッチール":"Spinda","ナックラー":"Trapinch","ビブラーバ":"Vibrava","フライゴン":"Flygon","サボネア":"Cacnea","ノクタス":"Cacturne","チルット":"Swablu","チルタリス":"Altaria","ザングース":"Zangoose","ハブネーク":"Seviper","ルナトーン":"Lunatone","ソルロック":"Solrock","ドジョッチ":"Barboach","ナマズン":"Whiscash","ヘイガニ":"Corphish","シザリガー":"Crawdaunt","ヤジロン":"Baltoy","ネンドール":"Claydol","リリーラ":"Lileep","ユレイドル":"Cradily","アノプス":"Anorith","アーマルド":"Armaldo","ヒンバス":"Feebas","ミロカロス":"Milotic","ポワルン":"Castform","カクレオン":"Kecleon","カゲボウズ":"Shuppet","ジュペッタ":"Banette","ヨマワル":"Duskull","サマヨール":"Dusclops","トロピウス":"Tropius","チリーン":"Chimecho","アブソル":"Absol","ソーナノ":"Wynaut","ユキワラシ":"Snorunt","オニゴーリ":"Glalie","タマザラシ":"Spheal","トドグラー":"Sealeo","トドゼルガ":"Walrein","パールル":"Clamperl","ハンテール":"Huntail","サクラビス":"Gorebyss","ジーランス":"Relicanth","ラブカス":"Luvdisc","タツベイ":"Bagon","コモルー":"Shelgon","ボーマンダ":"Salamence","ダンバル":"Beldum","メタング":"Metang","メタグロス":"Metagross","レジロック":"Regirock","レジアイス":"Regice","レジスチル":"Registeel","ラティアス":"Latias","ラティオス":"Latios","カイオーガ":"Kyogre","グラードン":"Groudon","レックウザ":"Rayquaza","ジラーチ":"Jirachi","デオキシス":"Deoxys","ナエトル":"Turtwig","ハヤシガメ":"Grotle","ドダイトス":"Torterra","ヒコザル":"Chimchar","モウカザル":"Monferno","ゴウカザル":"Infernape","ポッチャマ":"Piplup","ポッタイシ":"Prinplup","エンペルト":"Empoleon","ムックル":"Starly","ムクバード":"Staravia","ムクホーク":"Staraptor","ビッパ":"Bidoof","ビーダル":"Bibarel","コロボーシ":"Kricketot","コロトック":"Kricketune","コリンク":"Shinx","ルクシオ":"Luxio","レントラー":"Luxray","スボミー":"Budew","ロズレイド":"Roserade","ズガイドス":"Cranidos","ラムパルド":"Rampardos","タテトプス":"Shieldon","トリデプス":"Bastiodon","ミノムッチ":"Burmy","ミノマダム":"Wormadam","ガーメイル":"Mothim","ミツハニー":"Combee","ビークイン":"Vespiquen","パチリス":"Pachirisu","ブイゼル":"Buizel","フローゼル":"Floatzel","チェリンボ":"Cherubi","チェリム":"Cherrim","カラナクシ":"Shellos","トリトドン":"Gastrodon","エテボース":"Ambipom","フワンテ":"Drifloon","フワライド":"Drifblim","ミミロル":"Buneary","ミミロップ":"Lopunny","ムウマージ":"Mismagius","ドンカラス":"Honchkrow","ニャルマー":"Glameow","ブニャット":"Purugly","リーシャン":"Chingling","スカンプー":"Stunky","スカタンク":"Skuntank","ドーミラー":"Bronzor","ドータクン":"Bronzong","ウソハチ":"Bonsly","マネネ":"Mime Jr.","ピンプク":"Happiny","ペラップ":"Chatot","ミカルゲ":"Spiritomb","フカマル":"Gible","ガバイト":"Gabite","ガブリアス":"Garchomp","ゴンベ":"Munchlax","リオル":"Riolu","ルカリオ":"Lucario","ヒポポタス":"Hippopotas","カバルドン":"Hippowdon","スコルピ":"Skorupi","ドラピオン":"Drapion","グレッグル":"Croagunk","ドクロッグ":"Toxicroak","マスキッパ":"Carnivine","ケイコウオ":"Finneon","ネオラント":"Lumineon","タマンタ":"Mantyke","ユキカブリ":"Snover","ユキノオー":"Abomasnow","マニューラ":"Weavile","ジバコイル":"Magnezone","ベロベルト":"Lickilicky","ドサイドン":"Rhyperior","モジャンボ":"Tangrowth","エレキブル":"Electivire","ブーバーン":"Magmortar","トゲキッス":"Togekiss","メガヤンマ":"Yanmega","リーフィア":"Leafeon","グレイシア":"Glaceon","グライオン":"Gliscor","マンムー":"Mamoswine","ポリゴンＺ":"Porygon-Z","エルレイド":"Gallade","ダイノーズ":"Probopass","ヨノワール":"Dusknoir","ユキメノコ":"Froslass","ロトム":"Rotom","ユクシー":"Uxie","エムリット":"Mesprit","アグノム":"Azelf","ディアルガ":"Dialga","パルキア":"Palkia","ヒードラン":"Heatran","レジギガス":"Regigigas","ギラティナ":"Giratina","クレセリア":"Cresselia","フィオネ":"Phione","マナフィ":"Manaphy","ダークライ":"Darkrai","シェイミ":"Shaymin","アルセウス":"Arceus","ビクティニ":"Victini","ツタージャ":"Snivy","ジャノビー":"Servine","ジャローダ":"Serperior","ポカブ":"Tepig","チャオブー":"Pignite","エンブオー":"Emboar","ミジュマル":"Oshawott","フタチマル":"Dewott","ダイケンキ":"Samurott","ミネズミ":"Patrat","ミルホッグ":"Watchog","ヨーテリー":"Lillipup","ハーデリア":"Herdier","ムーランド":"Stoutland","チョロネコ":"Purrloin","レパルダス":"Liepard","ヤナップ":"Pansage","ヤナッキー":"Simisage","バオップ":"Pansear","バオッキー":"Simisear","ヒヤップ":"Panpour","ヒヤッキー":"Simipour","ムンナ":"Munna","ムシャーナ":"Musharna","マメパト":"Pidove","ハトーボー":"Tranquill","ケンホロウ":"Unfezant","シママ":"Blitzle","ゼブライカ":"Zebstrika","ダンゴロ":"Roggenrola","ガントル":"Boldore","ギガイアス":"Gigalith","コロモリ":"Woobat","ココロモリ":"Swoobat","モグリュー":"Drilbur","ドリュウズ":"Excadrill","タブンネ":"Audino","ドッコラー":"Timburr","ドテッコツ":"Gurdurr","ローブシン":"Conkeldurr","オタマロ":"Tympole","ガマガル":"Palpitoad","ガマゲロゲ":"Seismitoad","ナゲキ":"Throh","ダゲキ":"Sawk","クルミル":"Sewaddle","クルマユ":"Swadloon","ハハコモリ":"Leavanny","フシデ":"Venipede","ホイーガ":"Whirlipede","ペンドラー":"Scolipede","モンメン":"Cottonee","エルフーン":"Whimsicott","チュリネ":"Petilil","ドレディア":"Lilligant","バスラオ":"Basculin","メグロコ":"Sandile","ワルビル":"Krokorok","ワルビアル":"Krookodile","ダルマッカ":"Darumaka","ヒヒダルマ":"Darmanitan","マラカッチ":"Maractus","イシズマイ":"Dwebble","イワパレス":"Crustle","ズルッグ":"Scraggy","ズルズキン":"Scrafty","シンボラー":"Sigilyph","デスマス":"Yamask","デスカーン":"Cofagrigus","プロトーガ":"Tirtouga","アバゴーラ":"Carracosta","アーケン":"Archen","アーケオス":"Archeops","ヤブクロン":"Trubbish","ダストダス":"Garbodor","ゾロア":"Zorua","ゾロアーク":"Zoroark","チラーミィ":"Minccino","チラチーノ":"Cinccino","ゴチム":"Gothita","ゴチミル":"Gothorita","ゴチルゼル":"Gothitelle","ユニラン":"Solosis","ダブラン":"Duosion","ランクルス":"Reuniclus","コアルヒー":"Ducklett","スワンナ":"Swanna","バニプッチ":"Vanillite","バニリッチ":"Vanillish","バイバニラ":"Vanilluxe","シキジカ":"Deerling","メブキジカ":"Sawsbuck","エモンガ":"Emolga","カブルモ":"Karrablast","シュバルゴ":"Escavalier","タマゲタケ":"Foongus","モロバレル":"Amoonguss","プルリル":"Frillish","ブルンゲル":"Jellicent","ママンボウ":"Alomomola","バチュル":"Joltik","デンチュラ":"Galvantula","テッシード":"Ferroseed","ナットレイ":"Ferrothorn","ギアル":"Klink","ギギアル":"Klang","ギギギアル":"Klinklang","シビシラス":"Tynamo","シビビール":"Eelektrik","シビルドン":"Eelektross","リグレー":"Elgyem","オーベム":"Beheeyem","ヒトモシ":"Litwick","ランプラー":"Lampent","シャンデラ":"Chandelure","キバゴ":"Axew","オノンド":"Fraxure","オノノクス":"Haxorus","クマシュン":"Cubchoo","ツンベアー":"Beartic","フリージオ":"Cryogonal","チョボマキ":"Shelmet","アギルダー":"Accelgor","マッギョ":"Stunfisk","コジョフー":"Mienfoo","コジョンド":"Mienshao","クリムガン":"Druddigon","ゴビット":"Golett","ゴルーグ":"Golurk","コマタナ":"Pawniard","キリキザン":"Bisharp","バッフロン":"Bouffalant","ワシボン":"Rufflet","ウォーグル":"Braviary","バルチャイ":"Vullaby","バルジーナ":"Mandibuzz","クイタラン":"Heatmor","アイアント":"Durant","モノズ":"Deino","ジヘッド":"Zweilous","サザンドラ":"Hydreigon","メラルバ":"Larvesta","ウルガモス":"Volcarona","コバルオン":"Cobalion","テラキオン":"Terrakion","ビリジオン":"Virizion","トルネロス":"Tornadus","ボルトロス":"Thundurus","レシラム":"Reshiram","ゼクロム":"Zekrom","ランドロス":"Landorus","キュレム":"Kyurem","ケルディオ":"Keldeo","メロエッタ":"Meloetta","ゲノセクト":"Genesect","ハリマロン":"Chespin","ハリボーグ":"Quilladin","ブリガロン":"Chesnaught","フォッコ":"Fennekin","テールナー":"Braixen","マフォクシー":"Delphox","ケロマツ":"Froakie","ゲコガシラ":"Frogadier","ゲッコウガ":"Greninja","ホルビー":"Bunnelby","ホルード":"Diggersby","ヤヤコマ":"Fletchling","ヒノヤコマ":"Fletchinder","ファイアロー":"Talonflame","コフキムシ":"Scatterbug","コフーライ":"Spewpa","ビビヨン":"Vivillon","シシコ":"Litleo","カエンジシ":"Pyroar","フラベベ":"Flabébé","フラエッテ":"Floette","フラージェス":"Florges","メェークル":"Skiddo","ゴーゴート":"Gogoat","ヤンチャム":"Pancham","ゴロンダ":"Pangoro","トリミアン":"Furfrou","ニャスパー":"Espurr","ニャオニクス":"Meowstic","ヒトツキ":"Honedge","ニダンギル":"Doublade","ギルガルド":"Aegislash","シュシュプ":"Spritzee","フレフワン":"Aromatisse","ペロッパフ":"Swirlix","ペロリーム":"Slurpuff","マーイーカ":"Inkay","カラマネロ":"Malamar","カメテテ":"Binacle","ガメノデス":"Barbaracle","クズモー":"Skrelp","ドラミドロ":"Dragalge","ウデッポウ":"Clauncher","ブロスター":"Clawitzer","エリキテル":"Helioptile","エレザード":"Heliolisk","チゴラス":"Tyrunt","ガチゴラス":"Tyrantrum","アマルス":"Amaura","アマルルガ":"Aurorus","ニンフィア":"Sylveon","ルチャブル":"Hawlucha","デデンネ":"Dedenne","メレシー":"Carbink","ヌメラ":"Goomy","ヌメイル":"Sliggoo","ヌメルゴン":"Goodra","クレッフィ":"Klefki","ボクレー":"Phantump","オーロット":"Trevenant","バケッチャ":"Pumpkaboo","パンプジン":"Gourgeist","カチコール":"Bergmite","クレベース":"Avalugg","オンバット":"Noibat","オンバーン":"Noivern","ゼルネアス":"Xerneas","イベルタル":"Yveltal","ジガルデ":"Zygarde","ディアンシー":"Diancie","フーパ":"Hoopa","ボルケニオン":"Volcanion","モクロー":"Rowlet","フクスロー":"Dartrix","ジュナイパー":"Decidueye","ニャビー":"Litten","ニャヒート":"Torracat","ガオガエン":"Incineroar","アシマリ":"Popplio","オシャマリ":"Brionne","アシレーヌ":"Primarina","ツツケラ":"Pikipek","ケララッパ":"Trumbeak","ドデカバシ":"Toucannon","ヤングース":"Yungoos","デカグース":"Gumshoos","アゴジムシ":"Grubbin","デンヂムシ":"Charjabug","クワガノン":"Vikavolt","マケンカニ":"Crabrawler","ケケンカニ":"Crabominable","オドリドリ":"Oricorio","アブリー":"Cutiefly","アブリボン":"Ribombee","イワンコ":"Rockruff","ルガルガン":"Lycanroc","ヨワシ":"Wishiwashi","ヒドイデ":"Mareanie","ドヒドイデ":"Toxapex","ドロバンコ":"Mudbray","バンバドロ":"Mudsdale","シズクモ":"Dewpider","オニシズクモ":"Araquanid","カリキリ":"Fomantis","ラランテス":"Lurantis","ネマシュ":"Morelull","マシェード":"Shiinotic","ヤトウモリ":"Salandit","エンニュート":"Salazzle","ヌイコグマ":"Stufful","キテルグマ":"Bewear","アマカジ":"Bounsweet","アママイコ":"Steenee","アマージョ":"Tsareena","キュワワー":"Comfey","ヤレユータン":"Oranguru","ナゲツケサル":"Passimian","コソクムシ":"Wimpod","グソクムシャ":"Golisopod","スナバァ":"Sandygast","シロデスナ":"Palossand","ナマコブシ":"Pyukumuku","タイプ：ヌル":"Código Cero","シルヴァディ":"Silvally","メテノ":"Minior","ネッコアラ":"Komala","バクガメス":"Turtonator","トゲデマル":"Togedemaru","ミミッキュ":"Mimikyu","ハギギシリ":"Bruxish","ジジーロン":"Drampa","ダダリン":"Dhelmise","ジャラコ":"Jangmo-o","ジャランゴ":"Hakamo-o","ジャラランガ":"Kommo-o","カプ・コケコ":"Tapu Koko","カプ・テテフ":"Tapu Lele","カプ・ブルル":"Tapu Bulu","カプ・レヒレ":"Tapu Fini","コスモッグ":"Cosmog","コスモウム":"Cosmoem","ソルガレオ":"Solgaleo","ルナアーラ":"Lunala","ウツロイド":"Nihilego","マッシブーン":"Buzzwole","フェローチェ":"Pheromosa","デンジュモク":"Xurkitree","テッカグヤ":"Celesteela","カミツルギ":"Kartana","アクジキング":"Guzzlord","ネクロズマ":"Necrozma","マギアナ":"Magearna","マーシャドー":"Marshadow","ベベノム":"Poipole","アーゴヨン":"Naganadel","ツンデツンデ":"Stakataka","ズガドーン":"Blacephalon","ゼラオラ":"Zeraora","メルタン":"Meltan","メルメタル":"Melmetal","サルノリ":"Grookey","バチンキー":"Thwackey","ゴリランダー":"Rillaboom","ヒバニー":"Scorbunny","ラビフット":"Raboot","エースバーン":"Cinderace","メッソン":"Sobble","ジメレオン":"Drizzile","インテレオン":"Inteleon","ホシガリス":"Skwovet","ヨクバリス":"Greedent","ココガラ":"Rookidee","アオガラス":"Corvisquire","アーマーガア":"Corviknight","サッチムシ":"Blipbug","レドームシ":"Dottler","イオルブ":"Orbeetle","クスネ":"Nickit","フォクスライ":"Thievul","ヒメンカ":"Gossifleur","ワタシラガ":"Eldegoss","ウールー":"Wooloo","バイウールー":"Dubwool","カムカメ":"Chewtle","カジリガメ":"Drednaw","ワンパチ":"Yamper","パルスワン":"Boltund","タンドン":"Rolycoly","トロッゴン":"Carkol","セキタンザン":"Coalossal","カジッチュ":"Applin","アップリュー":"Flapple","タルップル":"Appletun","スナヘビ":"Silicobra","サダイジャ":"Sandaconda","ウッウ":"Cramorant","サシカマス":"Arrokuda","カマスジョー":"Barraskewda","エレズン":"Toxel","ストリンダー":"Toxtricity","ヤクデ":"Sizzlipede","マルヤクデ":"Centiskorch","タタッコ":"Clobbopus","オトスパス":"Grapploct","ヤバチャ":"Sinistea","ポットデス":"Polteageist","ミブリム":"Hatenna","テブリム":"Hattrem","ブリムオン":"Hatterene","ベロバー":"Impidimp","ギモー":"Morgrem","オーロンゲ":"Grimmsnarl","タチフサグマ":"Obstagoon","ニャイキング":"Perrserker","サニゴーン":"Cursola","ネギガナイト":"Sirfetch’d","バリコオル":"Mr. Rime","デスバーン":"Runerigus","マホミル":"Milcery","マホイップ":"Alcremie","タイレーツ":"Falinks","バチンウニ":"Pincurchin","ユキハミ":"Snom","モスノウ":"Frosmoth","イシヘンジン":"Stonjourner","コオリッポ":"Eiscue","イエッサン":"Indeedee","モルペコ":"Morpeko","ゾウドウ":"Cufant","ダイオウドウ":"Copperajah","パッチラゴン":"Dracozolt","パッチルドン":"Arctozolt","ウオノラゴン":"Dracovish","ウオチルドン":"Arctovish","ジュラルドン":"Duraludon","ドラメシヤ":"Dreepy","ドロンチ":"Drakloak","ドラパルト":"Dragapult","ザシアン":"Zacian","ザマゼンタ":"Zamazenta","ムゲンダイナ":"Eternatus","ダクマ":"Kubfu","ウーラオス":"Urshifu","ザルード":"Zarude","レジエレキ":"Regieleki","レジドラゴ":"Regidrago","ブリザポス":"Glastrier","レイスポス":"Spectrier","バドレックス":"Calyrex","アヤシシ":"Wyrdeer","バサギリ":"Kleavor","ガチグマ":"Ursaluna","イダイトウ":"Basculegion","オオニューラ":"Sneasler","ハリーマン":"Overqwil","ラブトロス":"Enamorus","ニャオハ":"Sprigatito","ニャローテ":"Floragato","マスカーニャ":"Meowscarada","ホゲータ":"Fuecoco","アチゲータ":"Crocalor","ラウドボーン":"Skeledirge","クワッス":"Quaxly","ウェルカモ":"Quaxwell","ウェーニバル":"Quaquaval","グルトン":"Lechonk","パフュートン":"Oinkologne","タマンチュラ":"Tarountula","ワナイダー":"Spidops","マメバッタ":"Nymble","エクスレッグ":"Lokix","パモ":"Pawmi","パモット":"Pawmo","パーモット":"Pawmot","ワッカネズミ":"Tandemaus","イッカネズミ":"Maushold","パピモッチ":"Fidough","バウッツェル":"Dachsbun","ミニーブ":"Smoliv","オリーニョ":"Dolliv","オリーヴァ":"Arboliva","イキリンコ":"Squawkabilly","コジオ":"Nacli","ジオヅム":"Naclstack","キョジオーン":"Garganacl","カルボウ":"Charcadet","グレンアルマ":"Armarouge","ソウブレイズ":"Ceruledge","ズピカ":"Tadbulb","ハラバリー":"Bellibolt","カイデン":"Wattrel","タイカイデン":"Kilowattrel","オラチフ":"Maschiff","マフィティフ":"Mabosstiff","シルシュルー":"Shroodle","タギングル":"Grafaiai","アノクサ":"Bramblin","アノホラグサ":"Brambleghast","ノノクラゲ":"Toedscool","リククラゲ":"Toedscruel","ガケガニ":"Klawf","カプサイジ":"Capsakid","スコヴィラン":"Scovillain","シガロコ":"Rellor","ベラカス":"Rabsca","ヒラヒナ":"Flittle","クエスパトラ":"Espathra","カヌチャン":"Tinkatink","ナカヌチャン":"Tinkatuff","デカヌチャン":"Tinkaton","ウミディグダ":"Wiglett","ウミトリオ":"Wugtrio","オトシドリ":"Bombirdier","ナミイルカ":"Finizen","イルカマン":"Palafin","ブロロン":"Varoom","ブロロローム":"Revavroom","モトトカゲ":"Cyclizar","ミミズズ":"Orthworm","キラーメ":"Glimmet","キラフロル":"Glimmora","ボチ":"Greavard","ハカドッグ":"Houndstone","カラミンゴ":"Flamigo","アルクジラ":"Cetoddle","ハルクジラ":"Cetitan","ミガルーサ":"Veluza","ヘイラッシャ":"Dondozo","シャリタツ":"Tatsugiri","コノヨザル":"Annihilape","ドオー":"Clodsire","リキキリン":"Farigiraf","ノココッチ":"Dudunsparce","ドドゲザン":"Kingambit","イダイナキバ":"Colmilargo","サケブシッポ":"Colagrito","アラブルタケ":"Furioseta","ハバタクカミ":"Melenaleteo","チヲハウハネ":"Reptalada","スナノケガワ":"Pelarena","テツノワダチ":"Ferrodada","テツノツツミ":"Ferrosaco","テツノカイナ":"Ferropalmas","テツノコウベ":"Ferrocuello","テツノドクガ":"Ferropolilla","テツノイバラ":"Ferropúas","セビエ":"Frigibax","セゴール":"Arctibax","セグレイブ":"Baxcalibur","コレクレー":"Gimmighoul","サーフゴー":"Gholdengo","チオンジェン":"Wo-Chien","パオジアン":"Chien-Pao","ディンルー":"Ting-Lu","イーユイ":"Chi-Yu","トドロクツキ":"Bramaluna","テツノブジン":"Ferropaladín","コライドン":"Koraidon","ミライドン":"Miraidon","ウネルミナモ":"Ondulagua","テツノイサハ":"Ferroverdor","カミッチュ":"Dipplin","チャデス":"Poltchageist","ヤバソチャ":"Sinistcha","イイネイヌ":"Okidogi","マシマシラ":"Munkidori","キチキギス":"Fezandipiti","オーガポン":"Ogerpon","ブリジュラス":"Archaludon","カミツオロチ":"Hydrapple","ウガツホムラ":"Flamariete","タケルライコ":"Electrofuria","テツノイワオ":"Ferromole","テツノカシラ":"Ferrotesta","テラパゴス":"Terapagos","モモワロウ":"Pecharunt"};
+const CM_CODIGO = {"base1":"BS","base2":"JU","basep":"PR","base3":"FO","base4":"B2","base5":"TR","gym1":"G1","gym2":"G2","neo1":"N1","neo2":"N2","neo3":"N3","neo4":"N4","lc":"LC","ecard1":"EX","bog":"BP","ecard2":"AQ","ecard3":"SK","ex1":"RS","ex2":"SS","np":"PR-NP","ex3":"DR","ex4":"MA","ex5":"HL","ex6":"RG","ex7":"TRR","ex8":"DX","ex9":"EM","ex10":"UF","ex11":"DS","ex12":"LM","ex13":"HP","ex14":"CG","ex15":"DF","ex16":"PK","dpp":"PR-DPP","dp1":"DP","dp2":"MT","dp3":"SW","dp4":"GE","dp5":"MD","dp6":"LA","dp7":"SF","pl1":"PL","pl2":"RR","pl3":"SV","pl4":"AR","hgss1":"HS","hgssp":"PR-HS","hgss2":"UL","hgss3":"UD","hgss4":"TM","col1":"CL","bw1":"BLW","bwp":"PR-BLW","bw2":"EPO","bw3":"NVI","bw4":"NXD","bw5":"DEX","bw6":"DRX","dv1":"DRV","bw7":"BCR","bw8":"PLS","bw9":"PLF","bw10":"PLB","xyp":"PR-XY","bw11":"LTR","xy0":"KSS","xy1":"XY","xy2":"FLF","xy3":"FFI","xy4":"PHF","xy5":"PRC","dc1":"DCR","xy6":"ROS","xy7":"AOR","xy8":"BKT","xy9":"BKP","g1":"GEN","xy10":"FCO","xy11":"STS","xy12":"EVO","sm1":"SUM","smp":"PR-SM","sm2":"GRI","sm3":"BUS","sm3.5":"SLG","sm4":"CIN","sm5":"UPR","sm6":"FLI","sm7":"CES","sm7.5":"DRM","sm8":"LOT","sm9":"TEU","det1":"DET","sm10":"UNB","sm11":"UNM","sma":"HIF","sm115":"HIF","sm12":"CEC","swshp":"PR-SW","swsh1":"SSH","swsh2":"RCL","swsh3":"DAA","swsh3.5":"CPA","swsh4":"VIV","swsh4.5":"SHF","swsh4.5sv":"SHF","swsh5":"BST","swsh6":"CRE","swsh7":"EVS","cel25cc":"CEL","cel25":"CEL","swsh8":"FST","swsh9tg":"BRS","swsh9":"BRS","swsh10":"ASR","swsh10tg":"ASR","swsh10.5":"PGO","swsh11":"LOR","swsh11tg":"LOR","swsh12":"SIT","swsh12tg":"SIT","swsh12.5":"CRZ","swsh12.5gg":"CRZ","sv01":"SVI","sve":"SVE","svp":"PR-SV","sv02":"PAL","sv03":"OBF","sv03.5":"MEW","sv04":"PAR","sv04.5":"PAF","sv05":"TEF","sv06":"TWM","sv06.5":"SFA","sv07":"SCR","sv08":"SSP","sv08.5":"PRE","sv09":"JTG","sv10":"DRI","sv10.5b":"BLK","sv10.5w":"WHT","me01":"MEG","me02":"PFL","me02.5":"ASC","me03":"POR","me04":"CRI","me05":"PBL"};
+/* Transliteración kana -> alfabeto latino.
+   Los nombres japoneses de las expansiones son casi siempre palabras
+   inglesas escritas en katakana (ストームエメラルダ = Storm Emeralda), así que
+   pasarlos a nuestro alfabeto los vuelve reconocibles. El kanji se deja tal
+   cual: no hay forma de leerlo sin un diccionario enorme. */
+
+const KANA2 = {
+  'キャ':'kya','キュ':'kyu','キョ':'kyo','シャ':'sha','シュ':'shu','ショ':'sho',
+  'チャ':'cha','チュ':'chu','チョ':'cho','ニャ':'nya','ニュ':'nyu','ニョ':'nyo',
+  'ヒャ':'hya','ヒュ':'hyu','ヒョ':'hyo','ミャ':'mya','ミュ':'myu','ミョ':'myo',
+  'リャ':'rya','リュ':'ryu','リョ':'ryo','ギャ':'gya','ギュ':'gyu','ギョ':'gyo',
+  'ジャ':'ja','ジュ':'ju','ジョ':'jo','ビャ':'bya','ビュ':'byu','ビョ':'byo',
+  'ピャ':'pya','ピュ':'pyu','ピョ':'pyo',
+  'ファ':'fa','フィ':'fi','フェ':'fe','フォ':'fo','フュ':'fyu',
+  'ティ':'ti','ディ':'di','トゥ':'tu','ドゥ':'du','デュ':'dyu','テュ':'tyu',
+  'ウィ':'wi','ウェ':'we','ウォ':'wo','シェ':'she','ジェ':'je','チェ':'che',
+  'ヴァ':'va','ヴィ':'vi','ヴェ':'ve','ヴォ':'vo','ツァ':'tsa','ツェ':'tse','ツォ':'tso',
+  'クァ':'kwa','クィ':'kwi','クェ':'kwe','クォ':'kwo','グァ':'gwa'
+};
+const KANA1 = {
+  'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
+  'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
+  'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
+  'タ':'ta','チ':'chi','ツ':'tsu','テ':'te','ト':'to',
+  'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
+  'ハ':'ha','ヒ':'hi','フ':'fu','ヘ':'he','ホ':'ho',
+  'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
+  'ヤ':'ya','ユ':'yu','ヨ':'yo',
+  'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
+  'ワ':'wa','ヰ':'i','ヱ':'e','ヲ':'o','ン':'n',
+  'ガ':'ga','ギ':'gi','グ':'gu','ゲ':'ge','ゴ':'go',
+  'ザ':'za','ジ':'ji','ズ':'zu','ゼ':'ze','ゾ':'zo',
+  'ダ':'da','ヂ':'ji','ヅ':'zu','デ':'de','ド':'do',
+  'バ':'ba','ビ':'bi','ブ':'bu','ベ':'be','ボ':'bo',
+  'パ':'pa','ピ':'pi','プ':'pu','ペ':'pe','ポ':'po',
+  'ヴ':'vu','ャ':'ya','ュ':'yu','ョ':'yo','ァ':'a','ィ':'i','ゥ':'u','ェ':'e','ォ':'o',
+  '・':' ','＝':' ','　':' '
+};
+
+const esKana = ch => {
+  const c = ch.charCodeAt(0);
+  return (c >= 0x30a0 && c <= 0x30ff) || (c >= 0x3040 && c <= 0x309f);
+};
+/* hiragana -> katakana, para usar una sola tabla */
+const aKatakana = s => s.replace(/[ぁ-ゖ]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
+
+function romaji(txt) {
+  if (!txt) return '';
+  const s = aKatakana(String(txt));
+  let out = '';
+  let i = 0;
+  let habiaKana = false;
+  while (i < s.length) {
+    const par = s.slice(i, i + 2);
+    if (KANA2[par]) { out += KANA2[par]; i += 2; habiaKana = true; continue; }
+    const ch = s[i];
+    if (ch === 'ー') {                       // alarga la vocal anterior
+      const v = out.slice(-1);
+      if ('aeiou'.indexOf(v) >= 0) out += v;
+      i++; continue;
+    }
+    if (ch === 'ッ') {                       // duplica la consonante siguiente
+      const sig = KANA2[s.slice(i + 1, i + 3)] || KANA1[s[i + 1]] || '';
+      if (sig) out += sig[0];
+      i++; continue;
+    }
+    if (KANA1[ch] != null) { out += KANA1[ch]; i++; habiaKana = true; continue; }
+    /* no es kana: kanji, letras latinas, números... se copian tal cual,
+       separando para que no se peguen a la transliteración */
+    if (habiaKana && out.slice(-1) !== ' ') out += ' ';
+    out += ch;
+    habiaKana = false;
+    i++;
+  }
+  out = out.replace(/\s+/g, ' ').trim();
+  return out ? out[0].toUpperCase() + out.slice(1) : '';
+}
+
+if (typeof module !== 'undefined') module.exports = { romaji };
+'use strict';
+/* ============================================================
+   Mi Colección Pokémon TCG
+
+   FUENTES DE DATOS
+   1) TCGdex (principal) — gratis, sin clave, con catálogo en español,
+      inglés y japonés, y precios de Cardmarket actualizados a diario.
+   2) pokemontcg.io (respaldo) — solo se consulta cuando TCGdex no tiene
+      precio para una carta, cosa que ocurre en unas 90 expansiones
+      inglesas. Esta API se apaga el 1 de marzo de 2027; cuando eso pase,
+      la app avisa y esas cartas conservan su último precio conocido.
+   ============================================================ */
+
+const $  = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+
+const TCG = 'https://api.tcgdex.net/v2';
+const PKM = 'https://api.pokemontcg.io/v2';
+const PKM_EOL = '2027-03-01';
+const KEY = 'ptcg_col_v3';
+
+const CATS  = { es: 'Español', en: 'English', ja: '日本語 (japonés)' };
+const IDIOMA_DE_CAT = { es: 'ES', en: 'EN', ja: 'JP' };
+const CONDS = { M:'Mint (M)', NM:'Near Mint (NM)', EX:'Excellent (EX)', GD:'Good (GD)', LP:'Light Played (LP)', PL:'Played (PL)', PO:'Poor (PO)' };
+const VARS  = { normal:'Normal', holo:'Holo', reverse:'Reverse Holo', '1st':'1ª Edición', promo:'Promo' };
+const LANGS = ['ES','EN','FR','DE','IT','PT','JP','KR','ZH','Otro'];
+const MODES = { trend:'Tendencia', avg:'Media de venta', avg30:'Media 30 días', avg7:'Media 7 días', low:'Más bajo' };
+
+const DEF = {
+  v: 3, items: [], wish: [], hist: [],
+  cfg: { cat:'es', priceMode:'trend', useCond:1, apiKey:'',
+         cond:{ M:1.05, NM:1, EX:0.9, GD:0.75, LP:0.6, PL:0.45, PO:0.3 } }
+};
+
+/* ---------- utilidades ---------- */
+const eur = n => new Intl.NumberFormat('es-ES', { style:'currency', currency:'EUR' }).format(Number(n) || 0);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const uid = () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const plu = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+function haceCuanto(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (isNaN(ms)) return '—';
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'ahora mismo';
+  if (min < 60) return 'hace ' + plu(min, 'minuto', 'minutos');
+  const h = Math.round(min / 60);
+  if (h < 24) return 'hace ' + plu(h, 'hora', 'horas');
+  return 'hace ' + plu(Math.round(h / 24), 'día', 'días');
+}
+const fmtDate = d => {
+  if (!d) return '—';
+  const s = String(d).replace(/\//g, '-').slice(0, 10).split('-');
+  return s.length === 3 ? s[2] + '/' + s[1] + '/' + s[0] : String(d);
+};
+const imgUrl = (base, q) => {
+  if (!base) return '';
+  if (base.slice(0, 5) === 'data:') return base;               // foto tuya, incrustada
+  if (/_SM\.png$/i.test(base)) return q === 'high' ? base.replace(/_SM\.png$/i, '_LG.png') : base;
+  if (/\.(png|webp|jpe?g)$/i.test(base)) return base;          // url ya completa
+  return base + (q === 'high' ? '/high.png' : '/low.webp');    // TCGdex sirve la calidad aparte
+};
+/* Cardmarket identifica cada carta como «código de expansión + número»
+   (sv11B 161, PAR 066, MEW 111), y buscando así cae directo en su ficha en
+   vez de en una lista. Para las japonesas el código es el mismo que usa el
+   catálogo; para las occidentales es la abreviatura oficial, que llevamos
+   en CM_CODIGO. Si no tenemos ni código ni número, buscamos por el nombre
+   occidental (グラードン -> Groudon). */
+const cmSearchUrl = c => {
+  const url = t => 'https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=' + encodeURIComponent(t);
+  if (typeof c === 'string') return url(c);
+  if (!c) return url('');
+  if (c.setId && c.number && !c.manual) {
+    const codigo = (typeof CM_CODIGO !== 'undefined' && CM_CODIGO[c.setId]) || c.setId;
+    return url(codigo + ' ' + c.number);
+  }
+  return url(c.alt || c.name || '');
+};
+
+let toastT;
+function toast(msg, kind) {
+  const h = $('#toastHost');
+  h.innerHTML = '<div class="toast ' + (kind || '') + '">' + esc(msg) + '</div>';
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { h.innerHTML = ''; }, kind === 'err' ? 6500 : 3400);
+}
+function progress(p) { $('#pgbar').style.width = (p <= 0 || p >= 100 ? 0 : p) + '%'; }
+
+/* ---------- almacenamiento ---------- */
+let storageOK = true;
+try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); } catch (e) { storageOK = false; }
+
+function migrate(s) {
+  /* v2 guardaba los precios crudos de pokemontcg.io en "cm". Los pasamos
+     al formato neutro "pr" para que convivan las dos fuentes. */
+  const MODEMAP = { trendPrice:'trend', averageSellPrice:'avg', avg30:'avg30', avg7:'avg7', lowPrice:'low', lowPriceExPlus:'low' };
+  if (MODEMAP[s.cfg.priceMode]) s.cfg.priceMode = MODEMAP[s.cfg.priceMode];
+  if (!MODES[s.cfg.priceMode]) s.cfg.priceMode = 'trend';
+  if (!CATS[s.cfg.cat]) s.cfg.cat = 'es';
+  const vistos = {};
+  s.items.concat(s.wish).forEach(it => {
+    if (!it.pr && it.cm) it.pr = prFromPkm(it.cm, it.cmUp);
+    delete it.cm; delete it.cmUp; delete it.cmUrl;
+    if (!it.cat) it.cat = 'en';
+    if (it.img && it.imgBig) delete it.imgBig;
+    /* Sin identificador propio no se puede editar ni borrar: se lo damos
+       aquí, que es por donde pasa todo lo que entra (carga e importación). */
+    if (!it.uid || vistos[it.uid]) it.uid = uid();
+    vistos[it.uid] = 1;
+    /* Las que se guardaron sin imagen recuperan la del archivo público. */
+    if (!it.img && !it.manual) it.img = imagenDeRespaldo(it.cat, it.setId, it.number);
+    /* Y las japonesas antiguas, su nombre occidental, que hace falta para
+       reconocerlas y para buscarlas en Cardmarket. */
+    if (it.cat === 'ja' && !it.alt) it.alt = latinName(it.name);
+  });
+  return s;
+}
+function load() {
+  if (!storageOK) return JSON.parse(JSON.stringify(DEF));
+  let raw = null;
+  try { raw = localStorage.getItem(KEY) || localStorage.getItem('ptcg_col_v2'); } catch (e) {}
+  if (!raw) return JSON.parse(JSON.stringify(DEF));
+  try {
+    const o = JSON.parse(raw);
+    const s = JSON.parse(JSON.stringify(DEF));
+    s.items = Array.isArray(o.items) ? o.items : [];
+    s.wish  = Array.isArray(o.wish)  ? o.wish  : [];
+    s.hist  = Array.isArray(o.hist)  ? o.hist  : [];
+    if (o.cfg) { Object.assign(s.cfg, o.cfg); Object.assign(s.cfg.cond, o.cfg.cond || {}); }
+    return migrate(s);
+  } catch (e) { return JSON.parse(JSON.stringify(DEF)); }
+}
+function save() {
+  if (!storageOK) return;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (e) { toast('No se pudo guardar: almacenamiento lleno. Exporta una copia.', 'err'); }
+}
+
+/* ---------- precios: formato neutro para las dos fuentes ---------- */
+function prFromTcgdex(cm) {
+  if (!cm) return null;
+  return {
+    trend: cm.trend, avg: cm.avg, low: cm.low, avg1: cm.avg1, avg7: cm.avg7, avg30: cm.avg30,
+    rtrend: cm['trend-holo'], ravg: cm['avg-holo'], rlow: cm['low-holo'],
+    ravg1: cm['avg1-holo'], ravg7: cm['avg7-holo'], ravg30: cm['avg30-holo'],
+    unit: cm.unit || 'EUR', updated: String(cm.updated || '').slice(0, 10), src: 'tcgdex'
+  };
+}
+function prFromPkm(p, updated) {
+  if (!p) return null;
+  return {
+    trend: p.trendPrice, avg: p.averageSellPrice, low: p.lowPrice, avg1: p.avg1, avg7: p.avg7, avg30: p.avg30,
+    rtrend: p.reverseHoloTrend, ravg: p.reverseHoloSell, rlow: p.reverseHoloLow,
+    ravg1: p.reverseHoloAvg1, ravg7: p.reverseHoloAvg7, ravg30: p.reverseHoloAvg30,
+    unit: 'EUR', updated: String(updated || '').replace(/\//g, '-').slice(0, 10), src: 'pokemontcg'
+  };
+}
+const SRC_NAME = { tcgdex: 'TCGdex', pokemontcg: 'pokemontcg.io' };
+
+function basePrice(pr, variant) {
+  if (!pr) return 0;
+  const m = S.cfg.priceMode;
+  if (variant === 'reverse') { const rv = pr['r' + m]; if (rv > 0) return rv; }
+  const order = [m, 'trend', 'avg', 'avg30', 'avg7', 'low'];
+  for (let i = 0; i < order.length; i++) { const v = pr[order[i]]; if (v > 0) return v; }
+  return 0;
+}
+/* Un precio puesto a mano manda sobre el automático. Hace falta para las
+   cartas que ninguna fuente cotiza —muchas japonesas— y para cuando no te
+   convence la referencia. No se le aplica el ajuste por estado: estás
+   poniendo lo que vale tu ejemplar, no un precio de catálogo que descontar. */
+const precioManual = it => {
+  if (it.mp === '' || it.mp == null) return null;
+  const n = Number(it.mp);
+  return isNaN(n) ? null : n;
+};
+const tienePrecioAuto = it => !it.manual && basePrice(it.pr, it.variant) > 0;
+
+function unitPrice(it) {
+  const m = precioManual(it);
+  if (m != null && m > 0) return m;
+  if (it.manual) return m || 0;
+  let p = basePrice(it.pr, it.variant);
+  if (S.cfg.useCond) { const k = S.cfg.cond[it.cond]; p *= (k == null ? 1 : k); }
+  return p;
+}
+const lineTotal = it => unitPrice(it) * (it.qty || 1);
+const sumValue  = list => list.reduce((a, b) => a + lineTotal(b), 0);
+const sumCount  = list => list.reduce((a, b) => a + (b.qty || 1), 0);
+const sumBuy    = list => list.reduce((a, b) => a + (Number(b.buy) || 0) * (b.qty || 1), 0);
+
+/* ---------- red ---------- */
+async function getJSON(url, tries, headers) {
+  tries = tries || 3;
+  let last = null;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, { headers: headers || {} });
+      if (r.status === 404) return null;
+      if (r.status === 429) { last = new Error('Demasiadas consultas seguidas. Espera un minuto.'); await sleep(1500 * (i + 1)); continue; }
+      if (r.status >= 500) { last = new Error('El servidor está ocupado (' + r.status + ')'); await sleep(600 * (i + 1)); continue; }
+      if (!r.ok) throw new Error('Error ' + r.status);
+      return await r.json();
+    } catch (e) { last = e; await sleep(500 * (i + 1)); }
+  }
+  throw last || new Error('Sin conexión');
+}
+const tcg = (path, tries) => getJSON(TCG + path, tries || 3);
+const pkm = (path) => getJSON(PKM + path, 5, S.cfg.apiKey ? { 'X-Api-Key': S.cfg.apiKey } : {});
+
+/* Ejecuta tareas en paralelo controlado: la API aguanta bien 6 a la vez. */
+async function pool(list, worker, workers, onProgress) {
+  const q = list.slice();
+  const total = list.length;
+  let done = 0;
+  await Promise.all(Array.from({ length: Math.min(workers || 6, Math.max(1, total)) }, async () => {
+    while (q.length) {
+      await worker(q.shift());
+      done++;
+      if (onProgress) onProgress(done, total);
+    }
+  }));
+}
+
+/* ---------- catálogo de expansiones (incrustado, ver SETS_RAW) ---------- */
+const setsOf = cat => (SETS_RAW[cat] || []).map(a => ({ id:a[0], name:a[1], serie:a[2], date:a[3], total:a[4] }));
+let SETIDX = {};
+function buildSetIndex() {
+  SETIDX = {};
+  Object.keys(SETS_RAW).forEach(cat => {
+    SETIDX[cat] = {};
+    setsOf(cat).forEach(s => { SETIDX[cat][s.id] = s; });
+  });
+}
+const setInfo = (cat, id) => (SETIDX[cat] && SETIDX[cat][id]) || null;
+const tieneKana = s => /[぀-ヿ]/.test(String(s || ''));
+/* A los nombres japoneses les pegamos la transliteración detrás: son casi
+   siempre palabras inglesas escritas en katakana, así se reconocen. */
+function setLabel(s) {
+  const anio = s.date ? ' (' + String(s.date).slice(0, 4) + ')' : '';
+  if (tieneKana(s.name)) {
+    const r = romaji(s.name);
+    if (r) return s.name + ' · ' + r + anio;
+  }
+  return s.name + anio;
+}
+function serieLabel(nombre) {
+  if (!tieneKana(nombre)) return nombre;
+  const r = romaji(nombre);
+  return r ? nombre + ' · ' + r : nombre;
+}
+
+function fillSetSelects() {
+  const cat = S.cfg.cat;
+  const grouped = {};
+  setsOf(cat).forEach(s => { (grouped[s.serie] = grouped[s.serie] || []).push(s); });
+  const opts = Object.keys(grouped).map(g =>
+    '<optgroup label="' + esc(serieLabel(g)) + '">' +
+    grouped[g].map(s => '<option value="' + esc(s.id) + '">' + esc(setLabel(s)) + '</option>').join('') +
+    '</optgroup>').join('');
+  [['#qSet', '<option value="">Cualquier expansión</option>'],
+   ['#sSet', '<option value="">— Elige una expansión —</option>']].forEach(p => {
+    const el = $(p[0]); if (!el) return;
+    const prev = el.value;
+    el.innerHTML = p[1] + opts;
+    if (prev) el.value = prev;
+  });
+}
+function fillCatSelects() {
+  const opts = Object.keys(CATS).map(k =>
+    '<option value="' + k + '"' + (k === S.cfg.cat ? ' selected' : '') + '>' + esc(CATS[k]) + '</option>').join('');
+  ['#qCat', '#sCat'].forEach(sel => { const el = $(sel); if (el) el.innerHTML = opts; });
+}
+function setCat(cat) {
+  if (!CATS[cat]) return;
+  S.cfg.cat = cat; save();
+  fillCatSelects(); fillSetSelects();
+  setCards = [];
+  $('#setOut').innerHTML = '<div class="empty"><div class="big">🗂️</div>Elige una expansión y pulsa <b>Cargar expansión</b>.</div>';
+  $('#setProgress').innerHTML = '';
+}
+
+/* ---------- normalización de cartas ---------- */
+/* ---------- nombres japoneses <-> occidentales (ver JA_DESDE_LATIN) ----------
+   Para poder escribir "Groudon" y que busque グラードン, y para enseñar el
+   nombre reconocible debajo de las cartas japonesas. */
+const normLatin = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+const tieneLatin = s => /[a-zA-Z]/.test(String(s || ''));
+
+function aJapones(texto) {
+  const t = JA_DESDE_LATIN[normLatin(texto)];
+  return t || '';
+}
+/* El nombre del Pokémon puede venir con adornos delante y detrás:
+   メガスターミーex = メガ (Mega) + スターミー (Starmie) + ex. Buscamos dentro
+   del nombre la entrada más larga del diccionario y transliteramos el resto. */
+function latinName(ja) {
+  if (!ja) return '';
+  if (LATIN_DESDE_JA[ja]) return LATIN_DESDE_JA[ja];
+  let clave = null, pos = -1;
+  for (const k in LATIN_DESDE_JA) {
+    if (k.length < 2) continue;
+    const i = ja.indexOf(k);
+    if (i >= 0 && (!clave || k.length > clave.length)) { clave = k; pos = i; }
+  }
+  if (!clave) return '';
+  const trozo = s => (s ? (/[぀-ヿ]/.test(s) ? romaji(s) : s) : '');
+  return [trozo(ja.slice(0, pos)), LATIN_DESDE_JA[clave], trozo(ja.slice(pos + clave.length))]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function pickCardmarket(d) {
+  const vs = d.variants_detailed || [];
+  for (let i = 0; i < vs.length; i++) if (vs[i].pricing && vs[i].pricing.cardmarket) return vs[i].pricing.cardmarket;
+  return null;
+}
+/* TCGdex no tiene foto de todas las cartas, y de las japonesas no tiene
+   casi ninguna. Recurrimos a dos archivos públicos que sí las sirven y que
+   nombran los ficheros de forma predecible. Si la carta no estuviera, el
+   hueco muestra su nombre y siempre puedes ponerle tu propia foto. */
+function imagenDeRespaldo(cat, setId, num) {
+  if (!setId || !num) return '';
+  const n = /^[0-9]+$/.test(String(num)) ? String(parseInt(num, 10)) : num;
+  if (cat === 'ja') return 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc/' + setId + '/' + setId + '_' + n + '_R_JP_SM.png';
+  return 'https://images.pokemontcg.io/' + setId + '/' + n + '.png';
+}
+
+function normCard(d, cat) {
+  const si = setInfo(cat, (d.set && d.set.id) || '');
+  return {
+    id: d.id, cat: cat,
+    name: d.name || '',
+    setId: (d.set && d.set.id) || '',
+    setName: (d.set && d.set.name) || (si && si.name) || '',
+    series: (d.serie && d.serie.name) || (si && si.serie) || '—',
+    number: d.localId || '',
+    rarity: d.rarity || '—',
+    img: d.image || imagenDeRespaldo(cat, (d.set && d.set.id) || '', d.localId),
+    alt: cat === 'ja' ? latinName(d.name) : '',
+    pr: prFromTcgdex(pickCardmarket(d))
+  };
+}
+/* Traduce un id de TCGdex al de pokemontcg.io: xy5 + "084" -> xy5-84.
+   Comprobado contra 20 expansiones: encajan todas. */
+const pkmIdOf = it => {
+  const n = String(it.number || '');
+  return it.setId + '-' + (/^[0-9]+$/.test(n) ? String(parseInt(n, 10)) : n);
+};
+
+/* ============================================================
+   NAVEGACIÓN
+   ============================================================ */
+$$('nav.tabs button').forEach(b => b.onclick = () => {
+  $$('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $$('section.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + b.dataset.v));
+  window.scrollTo(0, 0);
+  if (b.dataset.v === 'stats') renderStats();
+  if (b.dataset.v === 'deseos') renderWish();
+  if (b.dataset.v === 'ajustes') syncSettingsUI();   // refresca el medidor de espacio
+});
+
+/* ============================================================
+   TARJETA
+   ============================================================ */
+function cardHTML(c, opts) {
+  opts = opts || {};
+  /* El hueco con el nombre va siempre debajo: si la imagen no carga, la
+     tapamos y aparece él, en vez de quedar un rectángulo vacío. */
+  const src = imgUrl(c.img, 'low');
+  const img = '<div class="ph">' + esc(c.name) + '</div>' +
+    (src ? '<img src="' + esc(src) + '" alt="' + esc(c.name) + '" loading="lazy" style="position:relative" onerror="this.style.display=\'none\'">' : '');
+  let price = opts.priceText;
+  if (price == null) {
+    const p = basePrice(c.pr, c.variant);
+    price = p ? eur(p) + ' <small>/ud</small>' : '<small style="color:var(--tx3)">sin precio</small>';
+  }
+  return '<div class="card' + (opts.owned ? ' own' : '') + '">' +
+    '<div class="imgbox">' + img +
+      (opts.qty ? '<span class="qbadge">×' + opts.qty + '</span>' : '') +
+      (opts.variant ? '<span class="vbadge v-' + esc(opts.variant) + '">' + esc(VARS[opts.variant] || opts.variant) + '</span>' : '') +
+    '</div>' +
+    '<div class="body">' +
+      '<div class="nm">' + esc(c.name) + '</div>' +
+      (c.alt ? '<div class="meta" style="color:var(--acc2);font-weight:700">' + esc(c.alt) + '</div>' : '') +
+      '<div class="meta">' + esc(c.setName) + ' · ' + esc(c.number) + '</div>' +
+      '<div class="meta">' + esc(c.rarity) + (opts.sub ? ' · ' + esc(opts.sub) : '') + '</div>' +
+      '<div class="pr">' + price + '</div>' +
+    '</div>' +
+    (opts.actions ? '<div class="cardacts">' + opts.actions + '</div>' : '') +
+  '</div>';
+}
+function tile(k, v, n, cls) {
+  return '<div class="tile"><div class="k">' + esc(k) + '</div><div class="v ' + (cls || '') + '">' + v + '</div><div class="n">' + esc(n || '') + '</div></div>';
+}
+
+/* ============================================================
+   MI COLECCIÓN
+   ============================================================ */
+let viewMode = 'grid';
+
+function fillFilters() {
+  const sets = {}, rars = {}, langs = {};
+  S.items.forEach(i => { if (i.setName) sets[i.setId || i.setName] = i.setName; if (i.rarity) rars[i.rarity] = 1; if (i.lang) langs[i.lang] = 1; });
+  const keep = (sel, val) => { sel.value = val; if (sel.value !== val) sel.value = ''; };
+  const s1 = $('#fSet'), v1 = s1.value;
+  s1.innerHTML = '<option value="">Todas las expansiones</option>' + Object.keys(sets).sort((a, b) => sets[a].localeCompare(sets[b])).map(k => '<option value="' + esc(k) + '">' + esc(sets[k]) + '</option>').join('');
+  keep(s1, v1);
+  const s2 = $('#fRar'), v2 = s2.value;
+  s2.innerHTML = '<option value="">Todas</option>' + Object.keys(rars).sort().map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
+  keep(s2, v2);
+  const s3 = $('#fVar'), v3 = s3.value;
+  s3.innerHTML = '<option value="">Todas</option>' + Object.keys(VARS).map(k => '<option value="' + k + '">' + VARS[k] + '</option>').join('');
+  keep(s3, v3);
+  const s4 = $('#fLang'), v4 = s4.value;
+  s4.innerHTML = '<option value="">Todos</option>' + Object.keys(langs).sort().map(k => '<option value="' + esc(k) + '">' + esc(k) + '</option>').join('');
+  keep(s4, v4);
+}
+
+function filtered() {
+  const t = $('#fText').value.trim().toLowerCase();
+  const set = $('#fSet').value, rar = $('#fRar').value, va = $('#fVar').value, la = $('#fLang').value;
+  const pre = $('#fPrice').value;
+  const out = S.items.filter(i => {
+    if (set && (i.setId || i.setName) !== set) return false;
+    if (rar && i.rarity !== rar) return false;
+    if (va && i.variant !== va) return false;
+    if (la && i.lang !== la) return false;
+    if (pre === 'sin' && unitPrice(i) > 0) return false;
+    if (pre === 'mio' && !(precioManual(i) > 0)) return false;
+    if (pre === 'auto' && !tienePrecioAuto(i)) return false;
+    if (t) {
+      const hay = (i.name + ' ' + i.setName + ' ' + i.number + ' ' + (i.notes || '') + ' ' + i.rarity + ' ' + i.id).toLowerCase();
+      if (hay.indexOf(t) === -1) return false;
+    }
+    return true;
+  });
+  const cmp = {
+    'value-desc': (a, b) => lineTotal(b) - lineTotal(a),
+    'value-asc':  (a, b) => lineTotal(a) - lineTotal(b),
+    'unit-desc':  (a, b) => unitPrice(b) - unitPrice(a),
+    'name-asc':   (a, b) => a.name.localeCompare(b.name),
+    'set-asc':    (a, b) => (a.setName || '').localeCompare(b.setName || '') || (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0),
+    'added-desc': (a, b) => String(b.added || '').localeCompare(String(a.added || '')),
+    'qty-desc':   (a, b) => (b.qty || 1) - (a.qty || 1)
+  }[$('#fSort').value];
+  return out.sort(cmp);
+}
+
+function renderCollection() {
+  fillFilters();
+  const list = filtered();
+  const all = S.items;
+  const buy = sumBuy(all), val = sumValue(all), diff = val - buy;
+  const fechas = all.map(i => (i.pr && i.pr.updated) || '').filter(Boolean).sort();
+
+  $('#colTiles').innerHTML = [
+    tile('Cartas en total', String(sumCount(all)), plu(all.length, 'entrada distinta', 'entradas distintas')),
+    tile('Valor estimado', eur(val), 'Referencia: ' + (MODES[S.cfg.priceMode] || '') + ' de Cardmarket'),
+    tile('Invertido', buy ? eur(buy) : '—', buy ? 'Precio de compra anotado' : 'Anota lo que pagaste al añadir'),
+    buy ? tile('Ganancia / pérdida', (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg')
+        : tile('Carta más cara', all.length ? eur(Math.max.apply(null, all.map(unitPrice))) : '—', 'Precio por unidad'),
+    /* Dos fechas distintas que la gente confunde: la de los datos (cuándo
+       Cardmarket calculó esos precios) y la de tu última consulta. */
+    tile('Precios de Cardmarket',
+         fechas.length ? fmtDate(fechas[fechas.length - 1]) : 'nunca',
+         (S.lastCheck ? 'Comprobado ' + haceCuanto(S.lastCheck) : 'Pulsa «Actualizar precios»') +
+         (fechas.length > 1 && fechas[0] !== fechas[fechas.length - 1] ? ' · los más viejos, del ' + fmtDate(fechas[0]) : ''))
+  ].join('');
+
+  $('#hCount').textContent = sumCount(all);
+  $('#hValue').textContent = eur(val);
+
+  const out = $('#colOut');
+  if (!all.length) {
+    out.innerHTML = '<div class="empty"><div class="big">📚</div><b>Tu colección está vacía.</b><br>Ve a <b>Buscar y añadir</b> o a <b>Explorar expansiones</b> para registrar tus primeras cartas.</div>';
+    return;
+  }
+  if (!list.length) { out.innerHTML = '<div class="empty"><div class="big">🔎</div>Ningún resultado con esos filtros.</div>'; return; }
+
+  const head = '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">Mostrando <b style="color:var(--tx)">' + list.length +
+    '</b> de ' + plu(all.length, 'entrada', 'entradas') + ' · ' + plu(sumCount(list), 'carta', 'cartas') +
+    ' · <b style="color:var(--acc)">' + eur(sumValue(list)) + '</b></div>';
+
+  if (viewMode === 'grid') {
+    out.innerHTML = head + '<div class="grid">' + list.map(i => cardHTML(i, {
+      qty: i.qty, variant: i.variant,
+      sub: i.cond + ' · ' + i.lang + (i.manual ? ' · a mano' : ''),
+      priceText: (unitPrice(i) ? eur(unitPrice(i)) + ' <small>/ud · ' + eur(lineTotal(i)) + ' total</small>' : '<small style="color:var(--tx3)">sin precio</small>'),
+      /* El atajo a Cardmarket va en todas; resaltado en las que no tienen
+         precio, que son las que hay que resolver a mano. */
+      actions: '<button class="btn sm" data-edit="' + i.uid + '">✎</button>' +
+        '<a class="btn sm' + (unitPrice(i) ? '' : ' pri') + '" href="' + esc(cmSearchUrl(i)) + '" target="_blank" rel="noopener" title="Ver esta carta en Cardmarket" style="text-decoration:none">€ ↗</a>' +
+        '<button class="btn sm danger" data-del="' + i.uid + '">🗑</button>'
+    })).join('') + '</div>';
+  } else {
+    out.innerHTML = head + '<div class="tblwrap"><table><thead><tr>' +
+      '<th></th><th>Carta</th><th>Expansión</th><th>Nº</th><th>Rareza</th><th>Var.</th><th>Est.</th><th>Idi.</th>' +
+      '<th class="num">Cant.</th><th class="num">Ud.</th><th class="num">Total</th><th class="num">Compra</th><th>Fuente</th><th></th></tr></thead><tbody>' +
+      list.map(i =>
+        '<tr>' +
+        '<td>' + (imgUrl(i.img, 'low') ? '<img class="tmini" src="' + esc(imgUrl(i.img, 'low')) + '" loading="lazy" alt="">' : '') + '</td>' +
+        '<td><b>' + esc(i.name) + '</b>' + (i.notes ? '<div style="font-size:11px;color:var(--tx3)">' + esc(i.notes) + '</div>' : '') + '</td>' +
+        '<td style="color:var(--tx2)">' + esc(i.setName) + '</td>' +
+        '<td style="color:var(--tx2)">' + esc(i.number) + '</td>' +
+        '<td style="color:var(--tx2)">' + esc(i.rarity) + '</td>' +
+        '<td><span class="chip">' + esc(VARS[i.variant] || i.variant) + '</span></td>' +
+        '<td><span class="chip">' + esc(i.cond) + '</span></td>' +
+        '<td style="color:var(--tx2)">' + esc(i.lang) + '</td>' +
+        '<td class="num"><b>' + (i.qty || 1) + '</b></td>' +
+        '<td class="num">' + eur(unitPrice(i)) + '</td>' +
+        '<td class="num"><b style="color:var(--acc)">' + eur(lineTotal(i)) + '</b></td>' +
+        '<td class="num" style="color:var(--tx3)">' + (i.buy ? eur(i.buy) : '—') + '</td>' +
+        '<td style="color:var(--tx3);font-size:11px">' + (i.manual ? 'a mano' : (i.pr ? SRC_NAME[i.pr.src] || '' : '—')) + '</td>' +
+        '<td style="white-space:nowrap"><button class="btn sm" data-edit="' + i.uid + '">✎</button> <button class="btn sm danger" data-del="' + i.uid + '">🗑</button></td>' +
+        '</tr>').join('') +
+      '</tbody></table></div>';
+  }
+}
+
+['fText','fSet','fRar','fVar','fLang','fPrice','fSort'].forEach(id => {
+  const el = $('#' + id);
+  el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', renderCollection);
+});
+$('#btnClearF').onclick = () => { ['fText','fSet','fRar','fVar','fLang','fPrice'].forEach(id => $('#' + id).value = ''); $('#fSort').value = 'value-desc'; renderCollection(); };
+$('#btnViewMode').onclick = () => {
+  viewMode = viewMode === 'grid' ? 'table' : 'grid';
+  $('#btnViewMode').innerHTML = viewMode === 'grid' ? '📋 Ver como tabla' : '🖼️ Ver como cuadrícula';
+  renderCollection();
+};
+
+/* ---------- clics delegados ---------- */
+document.addEventListener('click', async e => {
+  const ed = e.target.closest('[data-edit]');
+  if (ed) {
+    const it = S.items.find(x => x.uid === ed.dataset.edit);
+    if (it) openModal(it); else toast('No encuentro esa carta. Recarga la página.', 'err');
+    return;
+  }
+
+  const dl = e.target.closest('[data-del]');
+  if (dl) {
+    const it = S.items.find(x => x.uid === dl.dataset.del);
+    if (!it) { toast('No encuentro esa carta. Recarga la página y vuelve a intentarlo.', 'err'); return; }
+    if (confirm('¿Quitar «' + it.name + '» (' + it.setName + ' ' + it.number + ') de tu colección?')) {
+      const antes = S.items.length;
+      S.items = S.items.filter(x => x !== it);
+      save(); renderCollection();
+      toast(S.items.length < antes ? 'Carta eliminada' : 'No se pudo eliminar', S.items.length < antes ? '' : 'err');
+    }
+    return;
+  }
+  const wd = e.target.closest('[data-wdel]');
+  if (wd) { S.wish = S.wish.filter(x => x.uid !== wd.dataset.wdel); save(); renderWish(); toast('Quitada de deseos'); return; }
+
+  const wm = e.target.closest('[data-wmove]');
+  if (wm) {
+    const w = S.wish.find(x => x.uid === wm.dataset.wmove);
+    if (w) { S.wish = S.wish.filter(x => x.uid !== w.uid); save(); renderWish(); openModal(null, w); }
+    return;
+  }
+  const ad = e.target.closest('[data-add]');
+  if (ad) {
+    const card = await loadCard(ad.dataset.add, ad.dataset.cat, ad);
+    if (card) openModal(null, card);
+    return;
+  }
+  const wi = e.target.closest('[data-wish]');
+  if (wi) {
+    const card = await loadCard(wi.dataset.wish, wi.dataset.cat, wi);
+    if (card) addWish(card);
+    return;
+  }
+});
+
+/* Trae la ficha completa (con precios) justo antes de añadir la carta. */
+async function loadCard(id, cat, btn) {
+  const txt = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '…'; btn.disabled = true; }
+  try {
+    const d = await tcg('/' + (cat || S.cfg.cat) + '/cards/' + encodeURIComponent(id));
+    if (!d) throw new Error('No se encontró la carta');
+    const c = normCard(d, cat || S.cfg.cat);
+    if (!c.pr) { const fb = await fallbackOne(c); if (fb) c.pr = fb; }
+    return c;
+  } catch (err) {
+    toast('No se pudo cargar la carta: ' + err.message, 'err');
+    return null;
+  } finally { if (btn) { btn.innerHTML = txt; btn.disabled = false; } }
+}
+
+/* Respaldo: si TCGdex no trae precio, se lo pedimos a pokemontcg.io. */
+async function fallbackOne(c) {
+  if (c.cat === 'ja') return null;                 // esa base solo tiene cartas inglesas
+  try {
+    const j = await pkm('/cards?q=' + encodeURIComponent('id:' + pkmIdOf(c)) + '&select=id,cardmarket');
+    const d = j && j.data && j.data[0];
+    if (d && d.cardmarket && d.cardmarket.prices) return prFromPkm(d.cardmarket.prices, d.cardmarket.updatedAt);
+  } catch (e) {}
+  return null;
+}
+
+/* ============================================================
+   CAMPO DE IMAGEN (lo usan las dos fichas: la del catálogo y la manual)
+   Acepta una foto tuya, que se reduce antes de guardarla, o un enlace
+   directo a una imagen.
+   ============================================================ */
+function campoImagenHTML(id, img) {
+  const esFoto = !!(img && img.slice(0, 5) === 'data:');
+  return '<label class="f">Imagen de la carta</label>' +
+    '<div class="row" style="gap:8px">' +
+      '<button class="btn pri" id="' + id + 'Btn" type="button">📷 Usar mi foto</button>' +
+      '<input class="inp grow" id="' + id + 'Url" placeholder="…o pega el enlace directo a una imagen" value="' + esc(esFoto ? '' : (img || '')) + '">' +
+      (esFoto ? '<button class="btn danger" id="' + id + 'Del" type="button">Quitar foto</button>' : '') +
+      '<input type="file" id="' + id + 'File" accept="image/*" hidden>' +
+    '</div>' +
+    '<div style="font-size:11.5px;color:var(--tx3);margin-top:5px" id="' + id + 'Info">' +
+      (esFoto ? 'Estás usando una foto tuya.' : 'Si la carta no trae foto, hazle una o descárgala y súbela con el botón: se guarda reducida.') +
+    '</div>';
+}
+
+function campoImagenWire(id, img, etiquetaGuardar) {
+  let foto = (img && img.slice(0, 5) === 'data:') ? img : null;
+  let quitada = false;
+  const info = () => $('#' + id + 'Info');
+
+  /* El error más fácil: pegar el enlace de una página (Drive, Dropbox...)
+     creyendo que es el de la imagen. Avisamos en vez de fallar callando. */
+  const revisar = () => {
+    const v = $('#' + id + 'Url').value.trim();
+    if (!v) { info().innerHTML = foto ? 'Estás usando una foto tuya.' : 'Si la carta no trae foto, hazle una o descárgala y súbela con el botón.'; return; }
+    const esPagina = /drive\.google\.com|docs\.google\.com|dropbox\.com\/s\/|photos\.app\.goo\.gl|onedrive\.live\.com|imgur\.com\/(a|gallery)\//i.test(v);
+    const pareceImagen = /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(v);
+    if (esPagina) info().innerHTML = '<b style="color:#ff8b7a">Ese enlace es una página, no una imagen.</b> Drive y similares sirven un visor, no el archivo, y suelen pedir permiso. Descarga la foto y usa <b>📷 Usar mi foto</b>.';
+    else if (!pareceImagen) info().innerHTML = 'Ese enlace no parece apuntar a una imagen (suelen acabar en .jpg o .png). Si no se ve, usa <b>📷 Usar mi foto</b>.';
+    else info().innerHTML = 'Enlace con pinta de imagen. Si luego no carga, ese sitio no permite enlazarla: usa <b>📷 Usar mi foto</b>.';
+  };
+  $('#' + id + 'Url').addEventListener('input', revisar);
+
+  $('#' + id + 'Btn').onclick = () => $('#' + id + 'File').click();
+  const btnQuitar = $('#' + id + 'Del');
+  if (btnQuitar) btnQuitar.onclick = () => {
+    foto = null; quitada = true;
+    $('#' + id + 'Url').value = '';
+    info().textContent = 'Foto quitada. Al guardar, la carta se queda sin imagen.';
+    btnQuitar.remove();
+  };
+
+  $('#' + id + 'File').onchange = ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    const kb = Math.round(f.size / 1024);
+    const ext = (f.name.split('.').pop() || '').toUpperCase();
+    const ficha = '<br><span style="color:var(--tx3)">Archivo: ' + esc(f.name) + ' · ' + (f.type || 'tipo desconocido') + ' · ' + kb + ' KB</span>';
+    info().textContent = 'Procesando la foto…';
+    const fr = new FileReader();
+    fr.onerror = () => { info().innerHTML = '<b style="color:#ff8b7a">No he podido leer ese archivo.</b>' + ficha; };
+    fr.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const W = 280, H = Math.max(1, Math.round(im.height * (W / im.width)));
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = H;
+        cv.getContext('2d').drawImage(im, 0, 0, W, H);
+        foto = cv.toDataURL('image/jpeg', 0.72);
+        quitada = false;
+        $('#' + id + 'Url').value = '';
+        info().innerHTML = '✅ Foto lista (' + Math.round(foto.length / 1024) + ' KB). Se guardará al pulsar <b>' + esc(etiquetaGuardar) + '</b>.';
+      };
+      im.onerror = () => {
+        const heic = /heic|heif/i.test(f.type) || /^(HEIC|HEIF)$/.test(ext);
+        const html = /html?$/i.test(ext) || /html/i.test(f.type);
+        info().innerHTML = '<b style="color:#ff8b7a">El navegador no sabe abrir ese archivo.</b> ' +
+          (heic ? 'Es una foto de iPhone en formato HEIC, que Chrome no entiende: ábrela con Fotos de Windows y usa <b>Guardar como</b> → JPG.'
+          : html ? 'Es una página web guardada, no una imagen: lo que descargaste de Drive fue la página, no el archivo. En Drive, pulsa los tres puntos y elige <b>Descargar</b>.'
+          : 'Prueba a abrirlo con Fotos de Windows y guardarlo como JPG o PNG.') + ficha;
+      };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+    ev.target.value = '';
+  };
+
+  return {
+    valor: () => {
+      if (foto) return foto;
+      const u = $('#' + id + 'Url').value.trim();
+      if (u) return u;
+      return quitada ? '' : '';
+    }
+  };
+}
+
+/* ============================================================
+   MODAL AÑADIR / EDITAR
+   ============================================================ */
+function openModal(existing, card) {
+  /* El idioma por defecto sale del catálogo donde la has buscado: si buscas
+     en inglés, la carta es inglesa. */
+  const base = existing || Object.assign({}, card, {
+    qty: 1, variant: 'normal', cond: 'NM',
+    lang: IDIOMA_DE_CAT[(card && card.cat) || S.cfg.cat] || 'ES',
+    buy: '', notes: ''
+  });
+  const isEdit = !!existing;
+  const opt = (o, sel) => Object.keys(o).map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
+  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+  const big = imgUrl(base.img, 'high');
+
+  $('#modalHost').innerHTML =
+  '<div class="ovl" id="ovl"><div class="modal">' +
+    '<div class="mhead"><h3>' + (isEdit ? 'Editar carta' : 'Añadir a mi colección') + '</h3><button class="x" id="mX">×</button></div>' +
+    '<div class="mbody">' +
+      '<div style="display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap">' +
+        (big ? '<img src="' + esc(big) + '" alt="" style="width:130px;border-radius:8px;flex:0 0 auto" onerror="this.style.display=\'none\'">' : '') +
+        '<div style="flex:1;min-width:190px">' +
+          '<div style="font-size:18px;font-weight:800">' + esc(base.name) + '</div>' +
+          '<div style="color:var(--tx2);font-size:13px;margin-bottom:8px">' + esc(base.setName) + ' · Nº ' + esc(base.number) + ' · ' + esc(base.rarity) + '</div>' +
+          priceBoxHTML(base) +
+        '</div>' +
+      '</div>' +
+      '<div class="fgrid">' +
+        '<div><label class="f">Cantidad</label><input class="inp" id="mQty" type="number" min="1" step="1" value="' + (base.qty || 1) + '"></div>' +
+        '<div><label class="f">Variante</label><select class="inp" id="mVar">' + opt(VARS, base.variant) + '</select></div>' +
+        '<div><label class="f">Estado</label><select class="inp" id="mCond">' + opt(CONDS, base.cond) + '</select></div>' +
+        '<div><label class="f">Idioma</label><select class="inp" id="mLang">' + optArr(LANGS, base.lang) + '</select></div>' +
+        '<div><label class="f">Precio que pagaste (€/ud)</label><input class="inp" id="mBuy" type="number" min="0" step="0.01" placeholder="opcional" value="' + esc(base.buy == null ? '' : base.buy) + '"></div>' +
+        '<div><label class="f">Graduación (opcional)</label><input class="inp" id="mGrade" placeholder="PSA 10, CGC 9.5..." value="' + esc(base.grade || '') + '"></div>' +
+        '<div><label class="f">' + (base.manual ? 'Valor estimado (€/ud)' : 'Precio que le pongo yo (€/ud)') + '</label>' +
+          '<input class="inp" id="mMp" type="number" min="0" step="0.01" placeholder="' + (base.manual ? 'lo pones tú' : 'dejar vacío = automático') + '" value="' + esc(base.mp == null ? '' : base.mp) + '"></div>' +
+      '</div>' +
+      '<div style="margin-top:12px"><label class="f">Notas</label><input class="inp" id="mNotes" placeholder="Dónde la guardas, con quién la cambiaste..." value="' + esc(base.notes || '') + '"></div>' +
+      '<div style="margin-top:12px">' + campoImagenHTML('mI', base.img) + '</div>' +
+      '<div class="note" id="mPrev"></div>' +
+    '</div>' +
+    '<div class="mfoot">' +
+      '<a class="btn" href="' + esc(cmSearchUrl(base)) + '" target="_blank" rel="noopener" style="margin-right:auto;text-decoration:none">Buscar en Cardmarket ↗</a>' +
+      '<button class="btn" id="mCancel">Cancelar</button>' +
+      '<button class="btn pri" id="mSave">' + (isEdit ? 'Guardar cambios' : 'Añadir') + '</button>' +
+    '</div>' +
+  '</div></div>';
+
+  const upd = () => {
+    const tmp = Object.assign({}, base, {
+      variant: $('#mVar').value, cond: $('#mCond').value,
+      qty: Math.max(1, parseInt($('#mQty').value, 10) || 1),
+      mp: $('#mMp') ? $('#mMp').value : base.mp
+    });
+    const u = unitPrice(tmp);
+    const pm = precioManual(tmp);
+    const mandaElTuyo = pm != null && pm > 0;
+    $('#mPrev').innerHTML = '<b>Valor estimado:</b> ' + eur(u) + ' por unidad · <b>' + eur(u * tmp.qty) + '</b> en total' +
+      (base.manual || mandaElTuyo
+        ? ' <span style="color:var(--tx3)">(precio puesto por ti: manda sobre el automático y no se actualiza solo)</span>'
+        : (S.cfg.useCond ? ' <span style="color:var(--tx3)">(incluye el ajuste por estado ×' + (S.cfg.cond[tmp.cond] == null ? 1 : S.cfg.cond[tmp.cond]) + ')</span>' : ''));
+  };
+  ['mVar','mCond','mQty','mMp'].forEach(id => { const el = $('#' + id); if (el) el.addEventListener('input', upd); });
+  upd();
+
+  const imagen = campoImagenWire('mI', base.img, isEdit ? 'Guardar cambios' : 'Añadir');
+
+  const close = () => { $('#modalHost').innerHTML = ''; };
+  $('#mX').onclick = close; $('#mCancel').onclick = close;
+  $('#ovl').onclick = e => { if (e.target.id === 'ovl') close(); };
+
+  $('#mSave').onclick = () => {
+    const data = {
+      qty: Math.max(1, parseInt($('#mQty').value, 10) || 1),
+      variant: $('#mVar').value, cond: $('#mCond').value, lang: $('#mLang').value,
+      buy: $('#mBuy').value === '' ? '' : Number($('#mBuy').value),
+      grade: $('#mGrade').value.trim(), notes: $('#mNotes').value.trim()
+    };
+    /* Vacío = sin precio propio, vuelve a mandar el automático. */
+    data.mp = $('#mMp').value === '' ? '' : Number($('#mMp').value);
+
+    data.img = imagen.valor();
+
+    if (isEdit) { Object.assign(existing, data); toast('Cambios guardados', 'ok'); }
+    else {
+      const dup = S.items.find(x => x.id === base.id && x.variant === data.variant && x.cond === data.cond && x.lang === data.lang && (x.grade || '') === data.grade);
+      if (dup) { dup.qty = (dup.qty || 1) + data.qty; toast('Ya la tenías: ahora tienes ' + dup.qty, 'ok'); }
+      else {
+        S.items.push(Object.assign({
+          uid: uid(), id: base.id, cat: base.cat, name: base.name,
+          setId: base.setId, setName: base.setName, series: base.series,
+          number: base.number, rarity: base.rarity, img: base.img, pr: base.pr,
+          added: new Date().toISOString()
+        }, data));
+        toast('«' + base.name + '» añadida a tu colección', 'ok');
+      }
+    }
+    save(); close(); renderCollection();
+    if (searchCards.length) renderSearchResults();   // refresca el «ya tienes N»
+  };
+}
+
+function priceBoxHTML(c) {
+  if (c.manual) return '<div style="background:#0e141c;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">Carta añadida a mano: <b>el valor lo pones tú</b> en el campo de abajo.</div>';
+  const p = c.pr;
+  if (!p) return '<div style="background:#2a1f14;border:1px solid #5a4322;border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tx2)">' +
+    'Ninguna fuente cotiza esta carta (pasa mucho con las japonesas: existen en Cardmarket, pero el catálogo no las tiene enlazadas).<br>' +
+    'Míralas con <b>Buscar en Cardmarket</b> aquí abajo y escribe el precio en <b>«Precio que le pongo yo»</b>.</div>';
+  const rows = [['Tendencia', p.trend], ['Media de venta', p.avg], ['Más bajo', p.low], ['Media 30 días', p.avg30]];
+  if (p.rtrend > 0) rows.push(['Reverse (tendencia)', p.rtrend]);
+  return '<div style="background:#0e141c;border:1px solid var(--line);border-radius:8px;padding:9px 11px">' +
+    rows.map(r => '<div class="srow"><span style="color:var(--tx2);font-size:12px">' + r[0] + '</span><b class="num">' + (r[1] > 0 ? eur(r[1]) : '—') + '</b></div>').join('') +
+    '<div style="font-size:11px;color:var(--tx3);margin-top:7px">Cardmarket vía ' + esc(SRC_NAME[p.src] || p.src) + ' · ' + esc(fmtDate(p.updated)) + '</div></div>';
+}
+
+/* ============================================================
+   ALTA MANUAL
+   ============================================================ */
+function openManual() {
+  const opt = (o, sel) => Object.keys(o).map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
+  const optArr = (a, sel) => a.map(k => '<option value="' + esc(k) + '"' + (k === sel ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+
+  $('#modalHost').innerHTML =
+  '<div class="ovl" id="ovl"><div class="modal">' +
+    '<div class="mhead"><h3>Añadir una carta a mano</h3><button class="x" id="mX">×</button></div>' +
+    '<div class="mbody">' +
+      '<div class="note">Para lo que ninguna fuente tenga catalogado: promos raras, cartas de otros idiomas o expansiones recién salidas. Lo único imprescindible es el nombre.</div>' +
+      '<div class="fgrid">' +
+        '<div><label class="f">Nombre *</label><input class="inp" id="xName" placeholder="Groudon"></div>' +
+        '<div><label class="f">Expansión</label><input class="inp" id="xSet" placeholder="Nombre de la expansión"></div>' +
+        '<div><label class="f">Número</label><input class="inp" id="xNum" placeholder="084/086"></div>' +
+        '<div><label class="f">Rareza</label><input class="inp" id="xRar" placeholder="Art Rare, SR, promo..."></div>' +
+        '<div><label class="f">Cantidad</label><input class="inp" id="xQty" type="number" min="1" step="1" value="1"></div>' +
+        '<div><label class="f">Variante</label><select class="inp" id="xVar">' + opt(VARS, 'normal') + '</select></div>' +
+        '<div><label class="f">Estado</label><select class="inp" id="xCond">' + opt(CONDS, 'NM') + '</select></div>' +
+        '<div><label class="f">Idioma</label><select class="inp" id="xLang">' + optArr(LANGS, IDIOMA_DE_CAT[S.cfg.cat] || 'ES') + '</select></div>' +
+        '<div><label class="f">Valor estimado (€/ud)</label><input class="inp" id="xMp" type="number" min="0" step="0.01" placeholder="lo pones tú"></div>' +
+        '<div><label class="f">Precio que pagaste (€/ud)</label><input class="inp" id="xBuy" type="number" min="0" step="0.01" placeholder="opcional"></div>' +
+      '</div>' +
+      '<div style="margin-top:12px">' + campoImagenHTML('xI', '') + '</div>' +
+      '<div style="margin-top:12px"><label class="f">Notas</label><input class="inp" id="xNotes" placeholder="Dónde la guardas, de dónde salió..."></div>' +
+    '</div>' +
+    '<div class="mfoot"><button class="btn" id="mCancel">Cancelar</button><button class="btn pri" id="mSave">Añadir</button></div>' +
+  '</div></div>';
+
+  const close = () => { $('#modalHost').innerHTML = ''; };
+  $('#mX').onclick = close; $('#mCancel').onclick = close;
+  $('#ovl').onclick = e => { if (e.target.id === 'ovl') close(); };
+  const imagen = campoImagenWire('xI', '', 'Añadir');
+  $('#xName').focus();
+
+  $('#mSave').onclick = () => {
+    const name = $('#xName').value.trim();
+    if (!name) { toast('Ponle al menos un nombre', 'err'); $('#xName').focus(); return; }
+    S.items.push({
+      uid: uid(), id: 'manual-' + uid(), manual: true, cat: S.cfg.cat,
+      name: name,
+      setId: '', setName: $('#xSet').value.trim() || 'Añadidas a mano', series: 'Añadidas a mano',
+      number: $('#xNum').value.trim(), rarity: $('#xRar').value.trim() || '—',
+      img: imagen.valor(), pr: null,
+      qty: Math.max(1, parseInt($('#xQty').value, 10) || 1),
+      variant: $('#xVar').value, cond: $('#xCond').value, lang: $('#xLang').value,
+      mp: $('#xMp').value === '' ? 0 : Number($('#xMp').value),
+      buy: $('#xBuy').value === '' ? '' : Number($('#xBuy').value),
+      grade: '', notes: $('#xNotes').value.trim(),
+      added: new Date().toISOString()
+    });
+    save(); close(); renderCollection();
+    toast('«' + name + '» añadida a mano', 'ok');
+  };
+}
+$('#btnManual').onclick = openManual;
+
+/* ============================================================
+   BUSCAR Y AÑADIR
+   ============================================================ */
+/* El número va impreso como 084/086, pero cada base lo guarda a su manera:
+   TCGdex usa "084" en unas expansiones y "84" en otras. Probamos las formas. */
+function numCandidates(raw) {
+  let n = String(raw || '').trim();
+  if (!n) return [];
+  n = n.split('/')[0].replace(/[^A-Za-z0-9-]/g, '');
+  if (!n) return [];
+  const out = [n];
+  if (/^[0-9]+$/.test(n)) {
+    const stripped = String(parseInt(n, 10));
+    if (out.indexOf(stripped) === -1) out.push(stripped);
+    const padded = stripped.padStart(3, '0');
+    if (out.indexOf(padded) === -1) out.push(padded);
+  }
+  return out;
+}
+
+/* El filtro "set=" de TCGdex casa por trozo de texto: pedir M6 devuelve
+   también SM6, SM6a y SM6b. Afinamos aquí por el prefijo exacto del id. */
+function exactSet(list, setId) {
+  if (!setId) return list;
+  const p = String(setId).toLowerCase() + '-';
+  return list.filter(c => String(c.id || '').toLowerCase().indexOf(p) === 0);
+}
+
+/* Resultados de la última búsqueda, para poder reordenar y filtrar sin
+   volver a pedir nada a la red. */
+let searchCards = [];
+let searchMeta = { total: 0, cat: 'es', aviso: '' };
+const searchOpts = { orden: 'set-desc', rareza: '', tengo: '', min: '' };
+
+/* Cuánto se ha movido el precio respecto a la media del último mes.
+   Es lo más cerca que puedo estar de "lo que está de moda": no hay ninguna
+   fuente pública que diga cuántas unidades se venden. */
+function variacion(c) {
+  const p = c.pr;
+  if (!p) return null;
+  const base = p.avg30, ahora = p.trend || p.avg;
+  if (!(base > 0) || !(ahora > 0)) return null;
+  return ((ahora - base) / base) * 100;
+}
+
+function renderSearchResults() {
+  const out = $('#searchOut');
+  const cat = searchMeta.cat;
+
+  const rarezas = {};
+  searchCards.forEach(c => { if (c.rarity && c.rarity !== '—') rarezas[c.rarity] = 1; });
+
+  const owned = {};
+  S.items.forEach(i => { owned[i.id] = (owned[i.id] || 0) + (i.qty || 1); });
+
+  const min = parseFloat(String(searchOpts.min).replace(',', '.'));
+  let lista = searchCards.filter(c => {
+    if (searchOpts.rareza && c.rarity !== searchOpts.rareza) return false;
+    if (searchOpts.tengo === 'si' && !owned[c.id]) return false;
+    if (searchOpts.tengo === 'no' && owned[c.id]) return false;
+    if (min > 0 && !(basePrice(c.pr, 'normal') >= min)) return false;
+    return true;
+  });
+
+  const fecha = c => { const s = setInfo(cat, c.setId); return (s && s.date) || ''; };
+  const orden = {
+    /* Las que no tienen precio van siempre al final, también cuando ordenas
+       de menor a mayor: si no, ocuparían todos los primeros puestos. */
+    'precio-desc': (a, b) => basePrice(b.pr, 'normal') - basePrice(a.pr, 'normal'),
+    'precio-asc':  (a, b) => (basePrice(a.pr, 'normal') || Infinity) - (basePrice(b.pr, 'normal') || Infinity),
+    'sube':        (a, b) => (variacion(b) == null ? -1e9 : variacion(b)) - (variacion(a) == null ? -1e9 : variacion(a)),
+    'baja':        (a, b) => (variacion(a) == null ? 1e9 : variacion(a)) - (variacion(b) == null ? 1e9 : variacion(b)),
+    'set-desc':    (a, b) => fecha(b).localeCompare(fecha(a)) || (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0),
+    'set-asc':     (a, b) => fecha(a).localeCompare(fecha(b)) || (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0),
+    'nombre':      (a, b) => String(a.alt || a.name).localeCompare(String(b.alt || b.name)),
+    'numero':      (a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0)
+  }[searchOpts.orden];
+  lista = lista.slice().sort(orden);
+
+  const opt = (v, t) => '<option value="' + v + '"' + (searchOpts.orden === v ? ' selected' : '') + '>' + t + '</option>';
+  const barra =
+    '<div class="row" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">' +
+      '<div style="min-width:210px"><label class="f">Ordenar por</label><select class="inp" id="rOrder">' +
+        opt('set-desc', 'Expansión más reciente') +
+        opt('precio-desc', 'Precio: de mayor a menor') +
+        opt('precio-asc', 'Precio: de menor a mayor') +
+        opt('sube', 'Las que más suben (vs. mes)') +
+        opt('baja', 'Las que más bajan (vs. mes)') +
+        opt('set-asc', 'Expansión más antigua') +
+        opt('nombre', 'Nombre (A-Z)') +
+        opt('numero', 'Número de carta') +
+      '</select></div>' +
+      '<div style="min-width:150px"><label class="f">Rareza</label><select class="inp" id="rRar">' +
+        '<option value="">Todas</option>' +
+        Object.keys(rarezas).sort().map(r => '<option value="' + esc(r) + '"' + (searchOpts.rareza === r ? ' selected' : '') + '>' + esc(r) + '</option>').join('') +
+      '</select></div>' +
+      '<div style="min-width:150px"><label class="f">En mi colección</label><select class="inp" id="rOwn">' +
+        '<option value="">Todas</option>' +
+        '<option value="no"' + (searchOpts.tengo === 'no' ? ' selected' : '') + '>Las que me faltan</option>' +
+        '<option value="si"' + (searchOpts.tengo === 'si' ? ' selected' : '') + '>Las que ya tengo</option>' +
+      '</select></div>' +
+      '<div style="min-width:120px"><label class="f">Precio mínimo €</label>' +
+        '<input class="inp" id="rMin" type="number" min="0" step="0.5" placeholder="sin mínimo" value="' + esc(searchOpts.min) + '"></div>' +
+      '<div><button class="btn" id="rClear">Limpiar</button></div>' +
+    '</div>';
+
+  const resumen = '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">' +
+    plu(lista.length, 'carta', 'cartas') +
+    (lista.length !== searchCards.length ? ' de ' + searchCards.length + ' encontradas' : '') +
+    (searchMeta.total > searchCards.length ? ' · la búsqueda daba ' + searchMeta.total + ', se han traído las ' + searchCards.length + ' primeras' : '') +
+    ' · catálogo ' + esc(CATS[cat]) +
+    (searchMeta.traducido ? ' · buscado como <b style="color:var(--tx)">' + esc(searchMeta.traducido) + '</b>' : '') +
+    '</div>';
+
+  const muestraVar = searchOpts.orden === 'sube' || searchOpts.orden === 'baja';
+
+  out.innerHTML =
+    (searchMeta.aviso ? '<div class="note">' + searchMeta.aviso + '</div>' : '') +
+    barra + resumen +
+    (lista.length
+      ? '<div class="grid">' + lista.map(c => {
+          const tengo = owned[c.id] || 0;
+          const v = variacion(c);
+          const precio = basePrice(c.pr, 'normal');
+          let txt = precio ? eur(precio) + ' <small>/ud</small>' : '<small style="color:var(--tx3)">sin precio</small>';
+          if (muestraVar && v != null) {
+            txt += ' <small class="' + (v >= 0 ? 'pos' : 'neg') + '">' + (v >= 0 ? '▲' : '▼') + Math.abs(v).toFixed(0) + '%</small>';
+          }
+          return cardHTML(c, {
+            owned: tengo > 0,
+            sub: tengo ? 'Ya tienes ' + plu(tengo, 'copia', 'copias') : '',
+            priceText: txt,
+            actions: '<button class="btn sm pri" data-add="' + esc(c.id) + '" data-cat="' + esc(cat) + '">+ Añadir</button>' +
+                     '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(cat) + '" title="A la lista de deseos">⭐</button>'
+          });
+        }).join('') + '</div>'
+      : '<div class="empty"><div class="big">🔎</div>Ninguna carta pasa esos filtros.</div>');
+
+  $('#rOrder').onchange = e => { searchOpts.orden = e.target.value; renderSearchResults(); };
+  $('#rRar').onchange   = e => { searchOpts.rareza = e.target.value; renderSearchResults(); };
+  $('#rOwn').onchange   = e => { searchOpts.tengo = e.target.value; renderSearchResults(); };
+  $('#rMin').oninput    = e => { searchOpts.min = e.target.value; renderSearchResults(); };
+  $('#rClear').onclick  = () => { searchOpts.orden = 'set-desc'; searchOpts.rareza = ''; searchOpts.tengo = ''; searchOpts.min = ''; renderSearchResults(); };
+}
+
+let lastSearch = null;
+async function doSearch() {
+  const name = $('#qName').value.trim();
+  const setId = $('#qSet').value;
+  const numRaw = $('#qNum').value.trim();
+  const cat = S.cfg.cat;
+  if (!name && !setId && !numRaw) { toast('Escribe al menos un nombre, una expansión o un número', 'err'); return; }
+
+  const out = $('#searchOut');
+  out.innerHTML = '<div class="empty"><div class="big">⏳</div>Buscando…</div>';
+  progress(30);
+  lastSearch = { name: name, setId: setId, numRaw: numRaw, cat: cat };
+
+  /* En el catálogo japonés los nombres están en japonés. Si escribes en
+     nuestro alfabeto, traducimos: "Groudon" -> グラードン. */
+  let nameQ = name, traducido = '';
+  if (cat === 'ja' && name && tieneLatin(name)) {
+    const ja = aJapones(name);
+    if (ja) { nameQ = ja; traducido = ja; }
+  }
+
+  const build = num => {
+    const q = [];
+    if (nameQ) q.push('name=like:' + encodeURIComponent(nameQ));
+    if (setId) q.push('set=' + encodeURIComponent(setId));
+    if (num) q.push('localId=' + encodeURIComponent(num));
+    return '/' + cat + '/cards?' + q.join('&');
+  };
+
+  try {
+    let list = [];
+    let aviso = '';
+    const nums = numCandidates(numRaw);
+    if (nums.length) {
+      for (let i = 0; i < nums.length && !list.length; i++) list = exactSet((await tcg(build(nums[i]))) || [], setId);
+      if (!list.length && (name || setId)) {
+        list = exactSet((await tcg(build(''))) || [], setId);
+        if (list.length) aviso = 'Ninguna carta lleva el número <b>' + esc(nums[0]) + '</b> entre esos resultados, así que te muestro todas las demás: localiza la tuya por la imagen.';
+      }
+    } else {
+      list = exactSet((await tcg(build(''))) || [], setId);
+    }
+
+    if (!list.length) {
+      searchCards = [];
+      out.innerHTML = '<div class="empty"><div class="big">🤷</div>No se han encontrado cartas en el catálogo <b>' + esc(CATS[cat]) + '</b>.<br>' +
+        '<span style="font-size:12px">' +
+        (cat === 'ja' && name && tieneLatin(name) && !traducido
+          ? 'En el catálogo japonés los nombres van en japonés y «' + esc(name) + '» no está en el diccionario. Busca por expansión y número, que es lo más fiable.'
+          : 'Prueba con menos palabras, cambia el catálogo de idioma, o añádela a mano.') +
+        '</span></div>';
+      progress(100); setTimeout(() => progress(0), 400);
+      return;
+    }
+
+    /* Para poder ordenar por precio hace falta la ficha de cada carta, así que
+       traemos hasta 150. Por encima de eso avisamos en vez de mentir con un
+       orden calculado sobre un trocito de los resultados. */
+    const TOPE = 150;
+    const total = list.length;
+    const slice = list.slice(0, TOPE);
+    const cards = [];
+    progress(45);
+    out.innerHTML = '<div class="empty"><div class="big">⏳</div>Consultando precios de ' + plu(slice.length, 'carta', 'cartas') + '…</div>';
+    await pool(slice, async c => {
+      try {
+        const d = await tcg('/' + cat + '/cards/' + encodeURIComponent(c.id), 2);
+        if (d) cards.push(normCard(d, cat));
+      } catch (e) {}
+    }, 6, (done, tot) => progress(45 + (done / tot) * 50));
+
+    progress(100);
+    searchCards = cards;
+    searchMeta = { total: total, cat: cat, aviso: aviso, traducido: traducido };
+    renderSearchResults();
+  } catch (e) {
+    progress(100);
+    out.innerHTML = '<div class="empty"><div class="big">⚠️</div>' + esc(e.message) +
+      '<br><button class="btn" style="margin-top:12px" id="btnRetry">Reintentar</button></div>';
+    const rt = $('#btnRetry'); if (rt) rt.onclick = doSearch;
+  }
+  setTimeout(() => progress(0), 500);
+}
+$('#btnSearch').onclick = doSearch;
+$('#qName').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+$('#qNum').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+$('#qCat').onchange = e => { setCat(e.target.value); if (lastSearch) doSearch(); };
+
+/* ============================================================
+   LISTA DE DESEOS
+   ============================================================ */
+function addWish(c) {
+  if (S.wish.some(w => w.id === c.id)) { toast('Ya está en tu lista de deseos'); return; }
+  S.wish.push(Object.assign({ uid: uid(), qty:1, variant:'normal', cond:'NM', lang:'ES', added:new Date().toISOString() }, c));
+  save(); toast('«' + c.name + '» añadida a deseos', 'ok'); renderWish();
+}
+function renderWish() {
+  $('#wishTiles').innerHTML = [
+    tile('Cartas deseadas', String(S.wish.length), S.wish.length === 1 ? 'carta pendiente' : 'cartas pendientes'),
+    tile('Coste estimado', eur(sumValue(S.wish)), 'Si las compraras hoy')
+  ].join('');
+  const out = $('#wishOut');
+  if (!S.wish.length) {
+    out.innerHTML = '<div class="empty"><div class="big">⭐</div>Tu lista de deseos está vacía.<br><span style="font-size:12px">Usa el botón ⭐ en los resultados de búsqueda.</span></div>';
+    return;
+  }
+  out.innerHTML = '<div class="grid">' + S.wish.map(w => cardHTML(w, {
+    actions: '<button class="btn sm pri" data-wmove="' + w.uid + '">✓ La tengo</button><button class="btn sm danger" data-wdel="' + w.uid + '">🗑</button>'
+  })).join('') + '</div>';
+}
+
+/* ============================================================
+   EXPLORAR EXPANSIONES
+   ============================================================ */
+let setCards = [];
+async function loadSet() {
+  const id = $('#sSet').value;
+  const cat = S.cfg.cat;
+  if (!id) { toast('Elige una expansión', 'err'); return; }
+  const out = $('#setOut');
+  out.innerHTML = '<div class="empty"><div class="big">⏳</div>Cargando la expansión…</div>';
+  setCards = [];
+  progress(40);
+  try {
+    const s = await tcg('/' + cat + '/sets/' + encodeURIComponent(id));
+    if (!s || !s.cards) throw new Error('Esa expansión no está disponible en este catálogo');
+    setCards = s.cards.map(c => ({
+      id: c.id, cat: cat, name: c.name || '', number: c.localId || '',
+      setId: id, setName: s.name || '', rarity: '', img: c.image || '', pr: null
+    }));
+    progress(100);
+    renderSet();
+  } catch (e) {
+    progress(100);
+    out.innerHTML = '<div class="empty"><div class="big">⚠️</div>' + esc(e.message) + '</div>';
+  }
+  setTimeout(() => progress(0), 400);
+}
+function renderSet() {
+  const owned = {};
+  S.items.forEach(i => { owned[i.id] = (owned[i.id] || 0) + (i.qty || 1); });
+  const have = setCards.filter(c => owned[c.id]).length;
+  const pct = setCards.length ? Math.round(have / setCards.length * 100) : 0;
+  $('#setProgress').innerHTML =
+    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">' +
+    '<b>Tienes ' + have + ' de ' + setCards.length + ' cartas</b><b style="color:var(--acc)">' + pct + '%</b></div>' +
+    '<div class="bar"><i style="width:' + pct + '%"></i></div>';
+
+  const f = $('#sFilter').value;
+  const list = setCards.filter(c => f === 'have' ? owned[c.id] : f === 'miss' ? !owned[c.id] : true);
+  $('#setOut').innerHTML = list.length
+    ? '<div style="margin-bottom:12px;color:var(--tx2);font-size:13px">El precio de cada carta se consulta al añadirla, para no lanzar cientos de peticiones de golpe.</div>' +
+      '<div class="grid">' + list.map(c => cardHTML(c, {
+        owned: !!owned[c.id], qty: owned[c.id] || 0,
+        sub: owned[c.id] ? 'En tu colección' : '',
+        priceText: '<small style="color:var(--tx3)">al añadir</small>',
+        actions: '<button class="btn sm ' + (owned[c.id] ? '' : 'pri') + '" data-add="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '">+ Añadir</button>' +
+                 (owned[c.id] ? '' : '<button class="btn sm" data-wish="' + esc(c.id) + '" data-cat="' + esc(c.cat) + '">⭐</button>')
+      })).join('') + '</div>'
+    : '<div class="empty"><div class="big">✅</div>Nada que mostrar con ese filtro.</div>';
+}
+$('#btnLoadSet').onclick = loadSet;
+$('#sFilter').onchange = () => { if (setCards.length) renderSet(); };
+$('#sCat').onchange = e => setCat(e.target.value);
+
+/* ============================================================
+   ACTUALIZAR PRECIOS
+   Fase 1: TCGdex, una petición por carta en paralelo controlado.
+   Fase 2: las que se queden sin precio, en lotes a pokemontcg.io.
+   ============================================================ */
+async function updatePrices() {
+  const targets = S.items.concat(S.wish).filter(i => !i.manual);
+  if (!targets.length) {
+    toast(S.items.length ? 'Solo tienes cartas añadidas a mano: esas las pones tú.' : 'No tienes cartas registradas todavía');
+    return;
+  }
+  const btn = $('#btnUpdate');
+  btn.disabled = true;
+
+  const byId = {};
+  targets.forEach(i => { (byId[i.cat + '|' + i.id] = byId[i.cat + '|' + i.id] || []).push(i); });
+  const claves = Object.keys(byId);
+
+  let okTcg = 0, sinPrecio = [], fallos = 0;
+
+  btn.textContent = '⟳ Actualizando 0%';
+  await pool(claves, async clave => {
+    const grupo = byId[clave];
+    const ref = grupo[0];
+    try {
+      const d = await tcg('/' + (ref.cat || 'en') + '/cards/' + encodeURIComponent(ref.id), 3);
+      if (!d) { fallos++; return; }
+      const pr = prFromTcgdex(pickCardmarket(d));
+      grupo.forEach(it => {
+        if (!it.img && d.image) it.img = d.image;
+        if (!it.rarity || it.rarity === '—') it.rarity = d.rarity || it.rarity;
+        if (d.set && d.set.name) it.setName = d.set.name;
+      });
+      if (pr) { grupo.forEach(it => { it.pr = pr; }); okTcg++; }
+      else sinPrecio.push(ref);
+    } catch (e) { fallos++; }
+  }, 6, (done, tot) => {
+    const p = (done / tot) * 70;
+    btn.textContent = '⟳ Actualizando ' + Math.round(p) + '%';
+    progress(p);
+  });
+
+  /* Fase 2: respaldo en lotes de 15 (pokemontcg.io admite id:a OR id:b) */
+  let okPkm = 0;
+  const candidatos = sinPrecio.filter(i => i.cat !== 'ja');
+  if (candidatos.length) {
+    const lotes = [];
+    for (let i = 0; i < candidatos.length; i += 15) lotes.push(candidatos.slice(i, i + 15));
+    for (let n = 0; n < lotes.length; n++) {
+      btn.textContent = '⟳ Respaldo ' + Math.round(70 + (n / lotes.length) * 30) + '%';
+      progress(70 + (n / lotes.length) * 30);
+      const mapa = {};
+      lotes[n].forEach(i => { mapa[pkmIdOf(i)] = i; });
+      const q = Object.keys(mapa).map(id => 'id:' + id).join(' OR ');
+      try {
+        const j = await pkm('/cards?q=' + encodeURIComponent(q) + '&pageSize=15&select=id,cardmarket');
+        (j && j.data || []).forEach(d => {
+          const ref = mapa[d.id];
+          if (!ref || !d.cardmarket || !d.cardmarket.prices) return;
+          const pr = prFromPkm(d.cardmarket.prices, d.cardmarket.updatedAt);
+          byId[ref.cat + '|' + ref.id].forEach(it => { it.pr = pr; });
+          okPkm++;
+        });
+      } catch (e) {}
+      if (n < lotes.length - 1) await sleep(200);
+    }
+  }
+
+  const total = sumValue(S.items);
+  const stamp = todayISO();
+  S.lastCheck = new Date().toISOString();
+  S.hist = S.hist.filter(h => h.d !== stamp);
+  S.hist.push({ d: stamp, v: Math.round(total * 100) / 100, n: sumCount(S.items) });
+  S.hist.sort((a, b) => a.d.localeCompare(b.d));
+  if (S.hist.length > 400) S.hist = S.hist.slice(-400);
+
+  save();
+  progress(100); setTimeout(() => progress(0), 500);
+  btn.disabled = false; btn.innerHTML = '⟳ Actualizar precios';
+  renderCollection(); renderWish(); renderStats();
+  if (setCards.length) renderSet();
+
+  /* Cardmarket recalcula una vez al día: si la fuente sigue dando la fecha
+     de ayer, hay que decirlo, o parece que la actualización no ha ido. */
+  const fechasTras = S.items.concat(S.wish).map(i => (i.pr && i.pr.updated) || '').filter(Boolean).sort();
+  const masNueva = fechasTras.length ? fechasTras[fechasTras.length - 1] : '';
+  const hoy = todayISO();
+
+  const sinNada = sinPrecio.length - okPkm;
+  let msg = 'Consultadas ' + plu(okTcg + okPkm, 'carta', 'cartas');
+  if (okPkm) msg += ' (' + okPkm + ' vía respaldo)';
+  msg += ' · ' + eur(total);
+  if (masNueva) {
+    msg += masNueva >= hoy
+      ? ' · precios de hoy'
+      : ' · Cardmarket aún no ha publicado los de hoy: estos son del ' + fmtDate(masNueva);
+  }
+  if (sinNada > 0) msg += ' · ' + plu(sinNada, 'carta sin precio', 'cartas sin precio');
+  if (fallos) msg += ' · ' + plu(fallos, 'fallo de red', 'fallos de red');
+  toast(msg, fallos ? 'err' : 'ok');
+}
+$('#btnUpdate').onclick = updatePrices;
+
+/* ============================================================
+   ESTADÍSTICAS
+   ============================================================ */
+function renderStats() {
+  const all = S.items;
+  const val = sumValue(all), buy = sumBuy(all), diff = val - buy;
+  const avg = all.length ? val / sumCount(all) : 0;
+  const sets = {}, rars = {}, fuentes = {};
+  all.forEach(i => {
+    sets[i.setName || '—'] = (sets[i.setName || '—'] || 0) + lineTotal(i);
+    rars[i.rarity || '—'] = (rars[i.rarity || '—'] || 0) + (i.qty || 1);
+    const f = i.manual ? 'Puesto a mano' : (i.pr ? (SRC_NAME[i.pr.src] || i.pr.src) : 'Sin precio');
+    fuentes[f] = (fuentes[f] || 0) + (i.qty || 1);
+  });
+
+  $('#stTiles').innerHTML = [
+    tile('Valor total', eur(val), 'Referencia ' + (MODES[S.cfg.priceMode] || '')),
+    tile('Cartas', String(sumCount(all)), plu(all.length, 'entrada', 'entradas') + ' · ' + plu(Object.keys(sets).length, 'expansión', 'expansiones')),
+    tile('Valor medio por carta', eur(avg), ''),
+    tile('Invertido', buy ? eur(buy) : '—', buy ? 'Sobre las cartas con precio anotado' : 'Sin datos de compra'),
+    buy ? tile('Ganancia / pérdida', (diff >= 0 ? '+' : '') + eur(diff), ((diff / buy) * 100).toFixed(1) + '%', diff >= 0 ? 'pos' : 'neg') : ''
+  ].join('');
+
+  const h = S.hist;
+  if (h.length < 2) {
+    $('#stHist').innerHTML = '<div class="empty" style="padding:26px">Necesitas al menos dos actualizaciones de precios en días distintos para ver la evolución.</div>';
+  } else {
+    const W = 760, H = 180, pad = 34;
+    const vs = h.map(x => x.v), mx = Math.max.apply(null, vs), mn = Math.min.apply(null, vs);
+    const span = (mx - mn) || 1;
+    const px = i => pad + (i / (h.length - 1)) * (W - pad - 10);
+    const py = v => H - 26 - ((v - mn) / span) * (H - 50);
+    const pts = h.map((x, i) => px(i) + ',' + py(x.v)).join(' ');
+    const first = h[0].v, lastv = h[h.length - 1].v, chg = lastv - first;
+    $('#stHist').innerHTML =
+      '<div style="margin-bottom:10px"><b style="font-size:20px">' + eur(lastv) + '</b> ' +
+      '<span class="' + (chg >= 0 ? 'pos' : 'neg') + '" style="font-weight:700">' + (chg >= 0 ? '+' : '') + eur(chg) +
+      ' (' + (first ? ((chg / first) * 100).toFixed(1) : '0') + '%)</span> <span style="color:var(--tx3);font-size:12px">desde ' + fmtDate(h[0].d) + '</span></div>' +
+      '<div style="overflow-x:auto"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;min-width:420px;height:auto">' +
+      '<polyline points="' + pts + '" fill="none" stroke="#ffcb05" stroke-width="2.5" stroke-linejoin="round"/>' +
+      h.map((x, i) => '<circle cx="' + px(i) + '" cy="' + py(x.v) + '" r="3" fill="#ffcb05"><title>' + fmtDate(x.d) + ': ' + eur(x.v) + '</title></circle>').join('') +
+      '<text x="4" y="14" fill="#6b7889" font-size="11">' + eur(mx) + '</text>' +
+      '<text x="4" y="' + (H - 6) + '" fill="#6b7889" font-size="11">' + eur(mn) + '</text>' +
+      '</svg></div>';
+  }
+
+  const top = all.slice().sort((a, b) => unitPrice(b) - unitPrice(a)).slice(0, 15);
+  $('#stTop').innerHTML = top.length
+    ? '<div class="tblwrap"><table style="min-width:640px"><thead><tr><th>#</th><th></th><th>Carta</th><th>Expansión</th><th>Var.</th><th class="num">Cant.</th><th class="num">Ud.</th><th class="num">Total</th></tr></thead><tbody>' +
+      top.map((i, n) => '<tr><td style="color:var(--tx3)">' + (n + 1) + '</td>' +
+        '<td>' + (imgUrl(i.img, 'low') ? '<img class="tmini" src="' + esc(imgUrl(i.img, 'low')) + '" loading="lazy" alt="">' : '') + '</td>' +
+        '<td><b>' + esc(i.name) + '</b></td><td style="color:var(--tx2)">' + esc(i.setName) + '</td>' +
+        '<td><span class="chip">' + esc(VARS[i.variant] || i.variant) + '</span></td>' +
+        '<td class="num">' + (i.qty || 1) + '</td><td class="num">' + eur(unitPrice(i)) + '</td>' +
+        '<td class="num"><b style="color:var(--acc)">' + eur(lineTotal(i)) + '</b></td></tr>').join('') +
+      '</tbody></table></div>'
+    : '<div class="empty" style="padding:26px">Sin cartas todavía.</div>';
+
+  $('#stSets').innerHTML = barsHTML(sets, v => eur(v));
+  $('#stRar').innerHTML = barsHTML(rars, v => plu(v, 'carta', 'cartas'));
+  $('#stSrc').innerHTML = barsHTML(fuentes, v => plu(v, 'carta', 'cartas'));
+}
+function barsHTML(obj, fmt) {
+  const ks = Object.keys(obj).sort((a, b) => obj[b] - obj[a]).slice(0, 18);
+  if (!ks.length) return '<div class="empty" style="padding:26px">Sin datos.</div>';
+  const mx = obj[ks[0]] || 1;
+  return ks.map(k =>
+    '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px">' +
+    '<span>' + esc(k) + '</span><b>' + fmt(obj[k]) + '</b></div>' +
+    '<div class="bar"><i style="width:' + Math.max(2, (obj[k] / mx) * 100) + '%"></i></div></div>').join('');
+}
+
+/* ============================================================
+   AJUSTES
+   ============================================================ */
+function download(name, text, type) {
+  const b = new Blob([text], { type: type || 'application/json;charset=utf-8' });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement('a');
+  a.href = u; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1000);
+}
+$('#btnExportJson').onclick = () => {
+  download('coleccion-pokemon-' + todayISO() + '.json', JSON.stringify(S, null, 2));
+  toast('Copia de seguridad descargada', 'ok');
+};
+$('#btnExportCsv').onclick = () => {
+  const head = ['ID','Nombre','Expansion','Numero','Rareza','Variante','Estado','Idioma','Graduacion','Cantidad','PrecioUnidad_EUR','ValorTotal_EUR','PrecioCompra_EUR','Fuente','Actualizado','Notas'];
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = S.items.map(i => [i.id, i.name, i.setName, i.number, i.rarity, VARS[i.variant] || i.variant, i.cond, i.lang, i.grade || '',
+    i.qty || 1, unitPrice(i).toFixed(2).replace('.', ','), lineTotal(i).toFixed(2).replace('.', ','),
+    i.buy === '' || i.buy == null ? '' : Number(i.buy).toFixed(2).replace('.', ','),
+    i.manual ? 'a mano' : (i.pr ? SRC_NAME[i.pr.src] || '' : ''), i.pr ? fmtDate(i.pr.updated) : '', i.notes || ''].map(q).join(';'));
+  download('coleccion-pokemon-' + todayISO() + '.csv', '﻿' + head.join(';') + '\n' + rows.join('\n'), 'text/csv;charset=utf-8');
+  toast('CSV descargado (ábrelo con Excel)', 'ok');
+};
+$('#btnImport').onclick = () => $('#fileImport').click();
+$('#fileImport').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const o = JSON.parse(r.result);
+      if (!o || !Array.isArray(o.items)) throw new Error('El archivo no tiene el formato esperado');
+      const entrantes = { items: o.items, wish: o.wish || [], hist: [], cfg: DEF.cfg };
+      migrate(entrantes);
+      const mode = S.items.length
+        ? (confirm('Ya tienes ' + plu(S.items.length, 'entrada', 'entradas') + '.\n\nAceptar = FUSIONAR con lo importado\nCancelar = REEMPLAZAR todo por el archivo') ? 'merge' : 'replace')
+        : 'replace';
+      if (mode === 'replace') { S.items = entrantes.items; S.wish = entrantes.wish; S.hist = o.hist || []; }
+      else {
+        entrantes.items.forEach(ni => {
+          const d = S.items.find(x => x.id === ni.id && x.variant === ni.variant && x.cond === ni.cond && x.lang === ni.lang);
+          if (d) d.qty = (d.qty || 1) + (ni.qty || 1);
+          else S.items.push(Object.assign({}, ni, { uid: uid() }));
+        });
+        entrantes.wish.forEach(w => { if (!S.wish.some(x => x.id === w.id)) S.wish.push(Object.assign({}, w, { uid: uid() })); });
+      }
+      save(); syncSettingsUI(); renderCollection(); renderWish(); renderStats();
+      toast('Importadas ' + plu(entrantes.items.length, 'entrada', 'entradas'), 'ok');
+    } catch (err) { toast('No se pudo importar: ' + err.message, 'err'); }
+    e.target.value = '';
+  };
+  r.readAsText(f);
+};
+$('#btnWipe').onclick = () => {
+  if (!confirm('Se borrará TODA tu colección de este navegador. ¿Seguro?')) return;
+  if (!confirm('Última confirmación: ¿has exportado una copia? Esto no se puede deshacer.')) return;
+  S = JSON.parse(JSON.stringify(DEF)); save(); syncSettingsUI(); renderCollection(); renderWish(); renderStats();
+  toast('Colección borrada');
+};
+$('#setPriceMode').onchange = () => { S.cfg.priceMode = $('#setPriceMode').value; save(); renderCollection(); renderStats(); renderWish(); toast('Referencia de precio: ' + MODES[S.cfg.priceMode]); };
+$('#setUseCond').onchange = () => { S.cfg.useCond = Number($('#setUseCond').value); save(); renderCollection(); renderStats(); };
+$('#btnSaveKey').onclick = () => { S.cfg.apiKey = $('#setApiKey').value.trim(); save(); toast(S.cfg.apiKey ? 'Clave guardada' : 'Clave eliminada', 'ok'); };
+
+function syncSettingsUI() {
+  $('#setPriceMode').innerHTML = Object.keys(MODES).map(k =>
+    '<option value="' + k + '"' + (k === S.cfg.priceMode ? ' selected' : '') + '>' + esc(MODES[k]) + (k === 'trend' ? ' — recomendado' : '') + '</option>').join('');
+  $('#setUseCond').value = String(S.cfg.useCond);
+  $('#setApiKey').value = S.cfg.apiKey || '';
+  $('#condGrid').innerHTML = Object.keys(CONDS).map(k =>
+    '<div><label class="f">' + esc(CONDS[k]) + '</label>' +
+    '<input class="inp" type="number" step="0.01" min="0" max="3" data-cond="' + k + '" value="' + (S.cfg.cond[k] == null ? 1 : S.cfg.cond[k]) + '"></div>').join('');
+  $$('[data-cond]').forEach(el => el.onchange = () => {
+    S.cfg.cond[el.dataset.cond] = Number(el.value) || 0;
+    save(); renderCollection(); renderStats();
+  });
+  let medidor = '';
+  if (storageOK) {
+    try {
+      const bytes = (localStorage.getItem(KEY) || '').length * 2;      // UTF-16
+      const mb = bytes / 1048576;
+      const fotos = S.items.filter(i => i.img && i.img.slice(0, 5) === 'data:').length;
+      const pct = Math.min(100, Math.round((mb / 5) * 100));
+      medidor = '<div style="margin-top:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">' +
+        '<span>Espacio usado' + (fotos ? ' · ' + plu(fotos, 'foto tuya', 'fotos tuyas') : '') + '</span>' +
+        '<b>' + mb.toFixed(2) + ' MB de ~5 MB</b></div><div class="bar"><i style="width:' + Math.max(1, pct) + '%"></i></div></div>';
+    } catch (e) {}
+  }
+  $('#storeInfo').innerHTML = (storageOK
+    ? 'Guardado automáticamente en este navegador. <b>Ojo:</b> si borras los datos de navegación o abres el archivo en otro navegador u ordenador, no verás la colección. La copia JSON es tu seguro.'
+    : '<b style="color:#ff8b7a">⚠ Este navegador no permite guardar datos para archivos locales.</b> Tu colección solo vivirá mientras no cierres la pestaña: exporta el JSON antes de salir e impórtalo al volver.') + medidor;
+
+  const quedan = Math.round((new Date(PKM_EOL) - new Date()) / 864e5);
+  $('#srcInfo').innerHTML =
+    '<b>Fuente principal: TCGdex.</b> Gratis, sin clave, con catálogo en español, inglés y japonés, y precios de Cardmarket actualizados a diario.<br>' +
+    '<b>Respaldo: pokemontcg.io.</b> Solo se consulta cuando TCGdex no tiene precio de una carta, cosa que pasa en unas 90 expansiones inglesas. ' +
+    (quedan > 0
+      ? 'Esta segunda fuente se apaga el 1 de marzo de 2027 (quedan ' + quedan + ' días). Cuando llegue el día, las cartas que dependan de ella conservarán su último precio conocido y el resto seguirá actualizándose con normalidad.'
+      : '<b style="color:#ff8b7a">Esta segunda fuente ya está apagada</b>, así que las cartas que dependían de ella conservan su último precio conocido.');
+}
+
+/* ============================================================
+   ARRANQUE
+   ============================================================ */
+let S = load();
+buildSetIndex();
+(function init() {
+  syncSettingsUI();
+  fillCatSelects();
+  fillSetSelects();
+  renderCollection();
+  renderWish();
+  const viejas = S.items.filter(i => !i.manual && i.pr && i.pr.updated && i.pr.updated !== todayISO());
+  if (viejas.length) toast('Consejo: pulsa «Actualizar precios» para traer los valores de hoy');
+})();
+</script>
+</body>
+</html>
