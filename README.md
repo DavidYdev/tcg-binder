@@ -8,7 +8,9 @@ The interface is in **English and Spanish**: pick one from the selector in the h
 
 ## How to use it
 
-Download `index.html` and open it with a double click. No installation, no account.
+**Open it at [davidydev.github.io/tcg-binder](https://davidydev.github.io/tcg-binder/).** No installation, no account; it works on phones too.
+
+You can also download `index.html` and open it with a double click. The web version and the downloaded file keep separate collections: to move yours from one to the other, export it and import it.
 
 Your collection is stored in your browser (`localStorage`), not on any server. To avoid losing it, export it now and then from **Settings → Export JSON**.
 

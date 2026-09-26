@@ -8,7 +8,9 @@ La interfaz está en **español e inglés**: se elige en el selector de la cabec
 
 ## Cómo usarlo
 
-Descarga `index.html` y ábrelo con doble clic. No necesita instalación ni cuenta.
+**Ábrelo en [davidydev.github.io/tcg-binder](https://davidydev.github.io/tcg-binder/).** No necesita instalación ni cuenta, y funciona también en el móvil.
+
+También puedes descargar `index.html` y abrirlo con doble clic. La web y el archivo descargado guardan colecciones separadas: para pasar la tuya de uno a otro, expórtala e impórtala.
 
 Tu colección se guarda en el navegador (`localStorage`), no en ningún servidor. Para no perderla, expórtala de vez en cuando desde **Ajustes → Exportar JSON**.
 
