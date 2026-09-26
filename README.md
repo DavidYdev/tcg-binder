@@ -1,60 +1,62 @@
 # TCG Binder
 
-Organizador de colecciones de cartas coleccionables. Hoy está hecho para **Pokémon TCG**: inventario, lista de deseos, explorador de expansiones, estadísticas y precios en euros de Cardmarket. Funciona igual con cartas en español, inglés y japonés.
+[Leer en español](README.es.md)
 
-La interfaz está en **español e inglés**: se elige en el selector de la cabecera y se recuerda. La primera vez usa el idioma de tu navegador.
+A collection organizer for trading cards. It's currently built for the **Pokémon TCG**: inventory, wishlist, set browser, statistics and Cardmarket prices in euros. It works with Spanish, English and Japanese cards.
 
-> **English:** a trading-card collection organizer, currently built for the Pokémon TCG: inventory, wishlist, set browser, statistics and Cardmarket prices in euros. It works with Spanish, English and Japanese cards. The interface is available in **English and Spanish**; pick one from the selector in the header (it starts in your browser's language). It's a single HTML file: download `organizador-pokemon-tcg.html` and open it. Your collection stays in your browser and is never sent to any server.
+The interface is in **English and Spanish**: pick one from the selector in the header and it's remembered. The first time, it follows your browser's language.
 
-## Cómo usarlo
+## How to use it
 
-Descarga `organizador-pokemon-tcg.html` y ábrelo con doble clic. No necesita instalación ni cuenta.
+Download `organizador-pokemon-tcg.html` and open it with a double click. No installation, no account.
 
-Tu colección se guarda en el navegador (`localStorage`), no en ningún servidor. Para no perderla, expórtala de vez en cuando desde **Ajustes → Exportar JSON**.
+Your collection is stored in your browser (`localStorage`), not on any server. To avoid losing it, export it now and then from **Settings → Export JSON**.
 
-### Importar una lista de cartas
+### Importing a card list
 
-Si ya tienes la colección apuntada, escríbela en un archivo de texto con el formato de `cartas.txt` (una carta por línea) y conviértela:
+If you already have your collection written down, put it in a text file following the format of `cartas.txt` (one card per line) and convert it:
 
 ```
 node construir-importacion.js cartas.txt
 ```
 
-El JSON resultante se carga desde **Ajustes → Importar JSON**.
+Load the resulting JSON from **Settings → Import JSON**. This tool and its template are in Spanish for now; the values themselves (`es`/`en`/`ja`, `holo`, `NM`…) are the same in any language.
 
-### Servidor local (opcional)
+### Local server (optional)
 
 ```
 node server.js
 ```
 
-Sirve la app en `http://localhost:8731`.
+Serves the app at `http://localhost:8731`.
 
-## Desarrollo
+## Development
 
-La app es un único HTML con el código y varios diccionarios incrustados. **No edites el bloque `<script>` del HTML a mano**:
+The app is a single HTML file with the code and several dictionaries embedded in it. **Don't edit the `<script>` block of the HTML by hand**:
 
-1. Edita `herramientas/newscript.js`.
-2. Ejecuta `node herramientas/splice.js`, que vuelve a montar el `<script>` con el código y los diccionarios.
+1. Edit `herramientas/newscript.js`.
+2. Run `node herramientas/splice.js`, which rebuilds the `<script>` from the code and the dictionaries.
 
-Los textos de la interfaz viven en `herramientas/textos.js`, en español y en inglés. En el código se piden con `t('clave')`, y en el HTML con `data-i18n="clave"` (o `data-i18n-ph` para los placeholder). `splice.js` no monta la app si a un idioma le falta una clave o si se usa una que no existe.
+Interface text lives in `herramientas/textos.js`, in Spanish and English. The code asks for it with `t('key')`, and the HTML with `data-i18n="key"` (or `data-i18n-ph` for placeholders). `splice.js` refuses to build the app if a language is missing a key, or if a key is used that doesn't exist.
 
-Los diccionarios (catálogo de expansiones, nombres latino↔katakana, códigos de Cardmarket) se regeneran con los `gen-*.js` de `herramientas/`, ejecutados desde esa carpeta.
+The dictionaries (set catalog, Latin↔katakana Pokémon names, Cardmarket codes) are regenerated with the `gen-*.js` scripts in `herramientas/`, run from that folder.
 
-## De dónde salen los datos
+Code comments are in Spanish.
 
-- **[TCGdex](https://tcgdex.dev)** (licencia MIT): catálogo de cartas en es/en/ja y precios de Cardmarket.
-- **[Pokémon TCG API](https://pokemontcg.io)**: respaldo para las expansiones a las que TCGdex no pone precio.
-- **[PokéAPI](https://pokeapi.co)**: nombres de los Pokémon en japonés y alfabeto latino (`herramientas/names.csv`).
+## Where the data comes from
 
-Los precios son los de Cardmarket, que se actualizan una vez al día.
+- **[TCGdex](https://tcgdex.dev)** (MIT license): card catalog in Spanish, English and Japanese, and Cardmarket prices.
+- **[Pokémon TCG API](https://pokemontcg.io)**: fallback for the sets TCGdex has no prices for.
+- **[PokéAPI](https://pokeapi.co)**: Pokémon names in Japanese and Latin script (`herramientas/names.csv`).
 
-**Este repositorio no contiene imágenes de cartas.** Tu navegador las pide directamente a TCGdex, Pokémon TCG API y Limitless TCG al mostrarlas.
+Prices are Cardmarket's, updated once a day.
 
-## Aviso de marcas
+**This repository contains no card images.** Your browser requests them directly from TCGdex, Pokémon TCG API and Limitless TCG when it shows them.
 
-Pokémon y los nombres de sus personajes son marcas de Nintendo, Creatures Inc. y GAME FREAK inc. Las ilustraciones de las cartas son © The Pokémon Company. Este es un proyecto de aficionado, gratuito y sin ánimo de lucro, y no está afiliado, patrocinado ni aprobado por ninguna de ellas.
+## Trademark notice
 
-## Licencia
+Pokémon and its character names are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Card artwork is © The Pokémon Company. This is a free, non-profit fan project, and it is not affiliated with, sponsored or endorsed by any of them.
 
-El código es [MIT](LICENSE). La licencia cubre solo el código de este repositorio, no las marcas ni las imágenes de las cartas.
+## License
+
+The code is [MIT](LICENSE). The license covers only the code in this repository, not the trademarks or the card images.

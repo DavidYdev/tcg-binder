@@ -1,8 +1,9 @@
-# Lista blanca: en esta carpeta viven también la colección, fotos y
-# herramientas personales. Todo queda fuera salvo lo que se nombra aquí.
+# Whitelist: this folder also holds a personal collection, photos and
+# tools. Everything is ignored except what is listed here.
 /*
 !/.gitignore
 !/README.md
+!/README.es.md
 !/LICENSE
 !/organizador-pokemon-tcg.html
 !/construir-importacion.js
