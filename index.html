@@ -53,6 +53,9 @@ header{
 .langsel{background:#0e141c;border:1px solid var(--line2);color:var(--tx);border-radius:var(--r2);padding:7px 8px;font-weight:600;cursor:pointer}
 .langsel:focus{outline:none;border-color:var(--acc2)}
 .warn{color:#ff8b7a}
+.foot{text-align:center;padding:26px 0 6px;font-size:12.5px}
+.foot a{color:var(--tx2);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 14px;display:inline-block}
+.foot a:hover{color:var(--acc);border-color:var(--line2)}
 
 nav.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
 nav.tabs::-webkit-scrollbar{display:none}
@@ -330,6 +333,8 @@ a{color:#79b8ff}
 </section>
 
 </main>
+
+<footer class="wrap foot"><a href="https://github.com/DavidYdev/tcg-binder" target="_blank" rel="noopener" data-i18n="foot.gh">⭐ Open source on GitHub</a></footer>
 
 <div id="modalHost"></div>
 <div id="toastHost"></div>
@@ -755,7 +760,10 @@ es: {
   'inst.sub': 'Puedes instalarla en el móvil o en el ordenador para abrirla con su propio icono, a pantalla completa y también sin conexión (buscar y actualizar precios sí necesitan internet).<br>' +
               '<b>Chrome, Edge o Android:</b> pulsa <b>📲 Instalar</b> en la cabecera cuando aparezca. Comparte la colección con la web.<br>' +
               '<b>iPhone o iPad:</b> abre la web en Safari, pulsa <b>Compartir</b> y luego <b>Añadir a la pantalla de inicio</b>. Ahí la app instalada guarda su propia colección, aparte de la de Safari: pásala con Exportar e Importar.',
-  'inst.done': 'App instalada'
+  'inst.done': 'App instalada',
+
+  /* footer */
+  'foot.gh': '⭐ Código abierto en GitHub'
 },
 
 en: {
@@ -1087,7 +1095,10 @@ en: {
   'inst.sub': 'You can install it on your phone or computer to open it with its own icon, full screen and even offline (searching and updating prices do need the internet).<br>' +
               '<b>Chrome, Edge or Android:</b> press <b>📲 Install</b> in the header when it appears. It shares its collection with the website.<br>' +
               '<b>iPhone or iPad:</b> open the site in Safari, tap <b>Share</b> and then <b>Add to Home Screen</b>. There the installed app keeps its own collection, separate from Safari’s: move it over with Export and Import.',
-  'inst.done': 'App installed'
+  'inst.done': 'App installed',
+
+  /* footer */
+  'foot.gh': '⭐ Open source on GitHub'
 }
 
 };

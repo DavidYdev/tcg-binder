@@ -335,7 +335,10 @@ es: {
   'inst.sub': 'Puedes instalarla en el móvil o en el ordenador para abrirla con su propio icono, a pantalla completa y también sin conexión (buscar y actualizar precios sí necesitan internet).<br>' +
               '<b>Chrome, Edge o Android:</b> pulsa <b>📲 Instalar</b> en la cabecera cuando aparezca. Comparte la colección con la web.<br>' +
               '<b>iPhone o iPad:</b> abre la web en Safari, pulsa <b>Compartir</b> y luego <b>Añadir a la pantalla de inicio</b>. Ahí la app instalada guarda su propia colección, aparte de la de Safari: pásala con Exportar e Importar.',
-  'inst.done': 'App instalada'
+  'inst.done': 'App instalada',
+
+  /* footer */
+  'foot.gh': '⭐ Código abierto en GitHub'
 },
 
 en: {
@@ -667,7 +670,10 @@ en: {
   'inst.sub': 'You can install it on your phone or computer to open it with its own icon, full screen and even offline (searching and updating prices do need the internet).<br>' +
               '<b>Chrome, Edge or Android:</b> press <b>📲 Install</b> in the header when it appears. It shares its collection with the website.<br>' +
               '<b>iPhone or iPad:</b> open the site in Safari, tap <b>Share</b> and then <b>Add to Home Screen</b>. There the installed app keeps its own collection, separate from Safari’s: move it over with Export and Import.',
-  'inst.done': 'App installed'
+  'inst.done': 'App installed',
+
+  /* footer */
+  'foot.gh': '⭐ Open source on GitHub'
 }
 
 };
