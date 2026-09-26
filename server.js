@@ -1,5 +1,5 @@
 const http=require('http'),fs=require('fs'),p=require('path');
-const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json'};
+const T={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png'};
 http.createServer((q,s)=>{
   let f=decodeURIComponent(q.url.split('?')[0]);
   if(f==='/')f='/index.html';

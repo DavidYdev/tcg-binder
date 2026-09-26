@@ -1508,6 +1508,36 @@ function setLang(l) {
 $('#uiLang').onchange = e => setLang(e.target.value);
 
 /* ============================================================
+   INSTALL
+   The service worker (sw.js) keeps a copy of the app so it opens offline;
+   it only works over http(s), not for a file opened from disk.
+   Browsers that can install (Chrome, Edge, Android) fire
+   beforeinstallprompt: we hold on to it and show our own button. Safari
+   on iPhone doesn't; Settings explains how to do it there.
+   ============================================================ */
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  $('#btnInstall').hidden = false;
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  $('#btnInstall').hidden = true;
+  toast(t('inst.done'), 'ok');
+});
+$('#btnInstall').onclick = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  $('#btnInstall').hidden = true;
+};
+
+/* ============================================================
    STARTUP
    ============================================================ */
 let S = load();

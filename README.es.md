@@ -8,7 +8,7 @@ La interfaz está en **español e inglés**: se elige en el selector de la cabec
 
 ## Cómo usarlo
 
-**Ábrelo en [davidydev.github.io/tcg-binder](https://davidydev.github.io/tcg-binder/).** No necesita instalación ni cuenta, y funciona también en el móvil.
+**Ábrelo en [davidydev.github.io/tcg-binder](https://davidydev.github.io/tcg-binder/).** No necesita instalación ni cuenta, y funciona también en el móvil. También puedes instalarla como app, con su propio icono y acceso sin conexión: **Ajustes → Instalar la app** explica cómo.
 
 También puedes descargar `index.html` y abrirlo con doble clic. La web y el archivo descargado guardan colecciones separadas: para pasar la tuya de uno a otro, expórtala e impórtala.
 

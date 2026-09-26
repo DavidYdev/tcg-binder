@@ -8,7 +8,7 @@ The interface is in **English and Spanish**: pick one from the selector in the h
 
 ## How to use it
 
-**Open it at [davidydev.github.io/tcg-binder](https://davidydev.github.io/tcg-binder/).** No installation, no account; it works on phones too.
+**Open it at [davidydev.github.io/tcg-binder](https://davidydev.github.io/tcg-binder/).** No installation, no account; it works on phones too. You can also install it as an app, with its own icon and offline access: **Settings → Install the app** explains how.
 
 You can also download `index.html` and open it with a double click. The web version and the downloaded file keep separate collections: to move yours from one to the other, export it and import it.
 

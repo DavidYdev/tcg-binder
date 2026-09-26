@@ -6,9 +6,15 @@
 !/README.es.md
 !/LICENSE
 !/index.html
+!/manifest.webmanifest
+!/sw.js
 !/import-list.js
 !/server.js
 !/cards.txt
+
+!/icons/
+/icons/*
+!/icons/*.png
 
 !/tools/
 /tools/*

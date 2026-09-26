@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My Pokémon TCG Collection</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#131a23">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TCG Binder">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root{
   --bg:#0d1117; --bg2:#151b23; --panel:#171e27; --panel2:#1e2632;
@@ -172,6 +179,7 @@ a{color:#79b8ff}
       <div class="hdr-spacer"></div>
       <div class="hdr-stat"><b id="hCount">0</b><span data-i18n="hdr.cards">cards</span></div>
       <div class="hdr-stat"><b id="hValue">€0.00</b><span data-i18n="hdr.value">est. value</span></div>
+      <button class="btn" id="btnInstall" data-i18n="inst.btn" hidden>📲 Install</button>
       <select class="langsel" id="uiLang" aria-label="Idioma / Language"><option value="es">Español</option><option value="en">English</option></select>
       <button class="btn pri" id="btnUpdate" data-i18n="upd.btn">⟳ Update prices</button>
     </div>
@@ -303,6 +311,11 @@ a{color:#79b8ff}
     <h2 class="t" data-i18n="set.api">API key (optional)</h2>
     <p class="sub" data-i18n="set.api.sub">Only affects the fallback source. TCGdex needs no key at all. If you already had a pokemontcg.io key, paste it here for a higher request allowance while that source is still alive; if you don’t have one, you don’t need it (new accounts can no longer be created).</p>
     <div class="row"><div class="grow"><input class="inp" id="setApiKey" placeholder="Paste your API key here (optional)" data-i18n-ph="set.api.ph"></div><button class="btn" id="btnSaveKey" data-i18n="save">Save</button></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="t" data-i18n="inst.title">Install the app</h2>
+    <p class="sub" style="margin:0" data-i18n="inst.sub">You can install it on your phone or computer to open it with its own icon, full screen and even offline (searching and updating prices do need the internet).<br><b>Chrome, Edge or Android:</b> press <b>📲 Install</b> in the header when it appears. It shares its collection with the website.<br><b>iPhone or iPad:</b> open the site in Safari, tap <b>Share</b> and then <b>Add to Home Screen</b>. There the installed app keeps its own collection, separate from Safari’s: move it over with Export and Import.</p>
   </div>
 
   <div class="panel">
@@ -734,7 +747,15 @@ es: {
   'imp.fail': m => 'No se pudo importar: ' + m,
   'wipe.c1': 'Se borrará TODA tu colección de este navegador. ¿Seguro?',
   'wipe.c2': 'Última confirmación: ¿has exportado una copia? Esto no se puede deshacer.',
-  'wipe.done': 'Colección borrada'
+  'wipe.done': 'Colección borrada',
+
+  /* install */
+  'inst.btn': '📲 Instalar',
+  'inst.title': 'Instalar la app',
+  'inst.sub': 'Puedes instalarla en el móvil o en el ordenador para abrirla con su propio icono, a pantalla completa y también sin conexión (buscar y actualizar precios sí necesitan internet).<br>' +
+              '<b>Chrome, Edge o Android:</b> pulsa <b>📲 Instalar</b> en la cabecera cuando aparezca. Comparte la colección con la web.<br>' +
+              '<b>iPhone o iPad:</b> abre la web en Safari, pulsa <b>Compartir</b> y luego <b>Añadir a la pantalla de inicio</b>. Ahí la app instalada guarda su propia colección, aparte de la de Safari: pásala con Exportar e Importar.',
+  'inst.done': 'App instalada'
 },
 
 en: {
@@ -1058,7 +1079,15 @@ en: {
   'imp.fail': m => 'Import failed: ' + m,
   'wipe.c1': 'This will delete your WHOLE collection from this browser. Are you sure?',
   'wipe.c2': 'Last confirmation: have you exported a backup? This can’t be undone.',
-  'wipe.done': 'Collection deleted'
+  'wipe.done': 'Collection deleted',
+
+  /* install */
+  'inst.btn': '📲 Install',
+  'inst.title': 'Install the app',
+  'inst.sub': 'You can install it on your phone or computer to open it with its own icon, full screen and even offline (searching and updating prices do need the internet).<br>' +
+              '<b>Chrome, Edge or Android:</b> press <b>📲 Install</b> in the header when it appears. It shares its collection with the website.<br>' +
+              '<b>iPhone or iPad:</b> open the site in Safari, tap <b>Share</b> and then <b>Add to Home Screen</b>. There the installed app keeps its own collection, separate from Safari’s: move it over with Export and Import.',
+  'inst.done': 'App installed'
 }
 
 };
@@ -2570,6 +2599,36 @@ function setLang(l) {
   if (setCards.length) renderSet(); else $('#setOut').innerHTML = emptyBox('🗂️', t('sets.start'));
 }
 $('#uiLang').onchange = e => setLang(e.target.value);
+
+/* ============================================================
+   INSTALL
+   The service worker (sw.js) keeps a copy of the app so it opens offline;
+   it only works over http(s), not for a file opened from disk.
+   Browsers that can install (Chrome, Edge, Android) fire
+   beforeinstallprompt: we hold on to it and show our own button. Safari
+   on iPhone doesn't; Settings explains how to do it there.
+   ============================================================ */
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  $('#btnInstall').hidden = false;
+});
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  $('#btnInstall').hidden = true;
+  toast(t('inst.done'), 'ok');
+});
+$('#btnInstall').onclick = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  $('#btnInstall').hidden = true;
+};
 
 /* ============================================================
    STARTUP
