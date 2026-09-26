@@ -1,8 +1,8 @@
-/* Transliteración kana -> alfabeto latino.
-   Los nombres japoneses de las expansiones son casi siempre palabras
-   inglesas escritas en katakana (ストームエメラルダ = Storm Emeralda), así que
-   pasarlos a nuestro alfabeto los vuelve reconocibles. El kanji se deja tal
-   cual: no hay forma de leerlo sin un diccionario enorme. */
+/* Kana -> Latin alphabet transliteration.
+   Japanese set names are nearly always English words written in katakana
+   (ストームエメラルダ = Storm Emeralda), so turning them into our alphabet makes
+   them recognisable. Kanji is left as it is: there is no way to read it
+   without a huge dictionary. */
 
 const KANA2 = {
   'キャ':'kya','キュ':'kyu','キョ':'kyo','シャ':'sha','シュ':'shu','ショ':'sho',
@@ -37,39 +37,39 @@ const KANA1 = {
   '・':' ','＝':' ','　':' '
 };
 
-const esKana = ch => {
+const isKana = ch => {
   const c = ch.charCodeAt(0);
   return (c >= 0x30a0 && c <= 0x30ff) || (c >= 0x3040 && c <= 0x309f);
 };
-/* hiragana -> katakana, para usar una sola tabla */
-const aKatakana = s => s.replace(/[ぁ-ゖ]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
+/* hiragana -> katakana, so a single table is enough */
+const toKatakana = s => s.replace(/[ぁ-ゖ]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
 
 function romaji(txt) {
   if (!txt) return '';
-  const s = aKatakana(String(txt));
+  const s = toKatakana(String(txt));
   let out = '';
   let i = 0;
-  let habiaKana = false;
+  let afterKana = false;
   while (i < s.length) {
-    const par = s.slice(i, i + 2);
-    if (KANA2[par]) { out += KANA2[par]; i += 2; habiaKana = true; continue; }
+    const pair = s.slice(i, i + 2);
+    if (KANA2[pair]) { out += KANA2[pair]; i += 2; afterKana = true; continue; }
     const ch = s[i];
-    if (ch === 'ー') {                       // alarga la vocal anterior
+    if (ch === 'ー') {                       // lengthens the previous vowel
       const v = out.slice(-1);
       if ('aeiou'.indexOf(v) >= 0) out += v;
       i++; continue;
     }
-    if (ch === 'ッ') {                       // duplica la consonante siguiente
-      const sig = KANA2[s.slice(i + 1, i + 3)] || KANA1[s[i + 1]] || '';
-      if (sig) out += sig[0];
+    if (ch === 'ッ') {                       // doubles the next consonant
+      const next = KANA2[s.slice(i + 1, i + 3)] || KANA1[s[i + 1]] || '';
+      if (next) out += next[0];
       i++; continue;
     }
-    if (KANA1[ch] != null) { out += KANA1[ch]; i++; habiaKana = true; continue; }
-    /* no es kana: kanji, letras latinas, números... se copian tal cual,
-       separando para que no se peguen a la transliteración */
-    if (habiaKana && out.slice(-1) !== ' ') out += ' ';
+    if (KANA1[ch] != null) { out += KANA1[ch]; i++; afterKana = true; continue; }
+    /* not kana: kanji, Latin letters, digits... are copied as they are,
+       with a space so they don't stick to the transliteration */
+    if (afterKana && out.slice(-1) !== ' ') out += ' ';
     out += ch;
-    habiaKana = false;
+    afterKana = false;
     i++;
   }
   out = out.replace(/\s+/g, ' ').trim();

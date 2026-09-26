@@ -1,33 +1,35 @@
 /* ============================================================
-   construir-importacion.js
-   Convierte una lista de cartas en un archivo JSON que la app
-   "Mi Colección Pokémon TCG" importa desde Ajustes → Importar JSON.
+   import-list.js
+   Turns a list of cards into a JSON file that the app imports
+   from Settings → Import JSON.
 
-   Uso:   node construir-importacion.js cartas.txt
+   Usage:   node import-list.js cards.txt
 
-   Una carta por línea. Solo el id es obligatorio:
+   One card per line. Only the id is required:
 
-     catalogo:id | cantidad | variante | estado | idioma | compra | notas
+     catalog:id | quantity | variant | condition | language | paid | notes
 
-   El catálogo es es / en / ja (por defecto es). Ejemplos:
+   The catalog is es / en / ja (es by default). Examples:
 
-     ja:M6-084 | 1 | holo | NM | JP | 12 | de un sobre
+     ja:M6-084 | 1 | holo | NM | JP | 12 | from a booster
      es:xy5-84 | 2
-     en:base1-4 | 1 | holo | LP | EN | 50 | carpeta azul
+     en:base1-4 | 1 | holo | LP | EN | 50 | blue binder
 
-   variante: normal | holo | reverse | 1st | promo
-   estado:   M | NM | EX | GD | LP | PL | PO   (por defecto NM)
+   variant:   normal | holo | reverse | 1st | promo
+   condition: M | NM | EX | GD | LP | PL | PO   (NM by default)
+   language:  defaults to the catalog's (es -> ES, en -> EN, ja -> JP)
 
-   Precios: TCGdex primero; si una carta no tiene, se pregunta a
-   pokemontcg.io, igual que hace la app.
+   Prices: TCGdex first; if a card has none, pokemontcg.io is asked,
+   just like the app does.
    ============================================================ */
 
 const fs = require('fs');
 
 const TCG = 'https://api.tcgdex.net/v2';
 const PKM = 'https://api.pokemontcg.io/v2';
+const LANG_OF_CAT = { es: 'ES', en: 'EN', ja: 'JP', fr: 'FR', it: 'IT', de: 'DE', pt: 'PT' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const eur = n => new Intl.NumberFormat('es-ES', { style:'currency', currency:'EUR' }).format(n || 0);
+const eur = n => new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR' }).format(n || 0);
 
 async function getJSON(url, tries = 5) {
   let last;
@@ -77,7 +79,7 @@ function parseLine(line) {
     qty: Math.max(1, parseInt(String(p[1] || '1').replace(/^x/i, ''), 10) || 1),
     variant: (p[2] || 'normal').toLowerCase(),
     cond: (p[3] || 'NM').toUpperCase(),
-    lang: (p[4] || (cat === 'ja' ? 'JP' : 'ES')).toUpperCase(),
+    lang: (p[4] || LANG_OF_CAT[cat] || 'ES').toUpperCase(),
     buy: p[5] ? Number(String(p[5]).replace(',', '.')) : '',
     notes: p[6] || ''
   };
@@ -87,34 +89,34 @@ const pkmIdOf = (setId, num) => setId + '-' + (/^[0-9]+$/.test(String(num)) ? St
 
 (async function main() {
   const src = process.argv[2];
-  if (!src) { console.error('Falta el archivo de entrada.\nUso: node construir-importacion.js cartas.txt'); process.exit(1); }
+  if (!src) { console.error('Missing input file.\nUsage: node import-list.js cards.txt'); process.exit(1); }
 
   const wanted = fs.readFileSync(src, 'utf8')
     .split(/\r?\n/).map(l => l.trim())
     .filter(l => l && l[0] !== '#')
     .map(parseLine);
-  if (!wanted.length) { console.error('El archivo no tiene ninguna carta.'); process.exit(1); }
+  if (!wanted.length) { console.error('The file has no cards in it.'); process.exit(1); }
 
   const items = [];
-  const noEncontradas = [];
-  const sinPrecio = [];
-  let total = 0, viaRespaldo = 0;
+  const notFound = [];
+  const noPrice = [];
+  let total = 0, viaFallback = 0;
 
   for (const w of wanted) {
-    process.stdout.write('consultando ' + w.cat + ':' + w.id + '...\r');
+    process.stdout.write('fetching ' + w.cat + ':' + w.id + '...\r');
     let d = null;
     try { d = await getJSON(TCG + '/' + w.cat + '/cards/' + encodeURIComponent(w.id)); } catch (e) {}
-    if (!d) { noEncontradas.push(w.cat + ':' + w.id); continue; }
+    if (!d) { notFound.push(w.cat + ':' + w.id); continue; }
 
     let pr = prFromTcgdex(pickCardmarket(d));
     if (!pr && w.cat !== 'ja') {
       try {
         const j = await getJSON(PKM + '/cards?q=' + encodeURIComponent('id:' + pkmIdOf(d.set.id, d.localId)) + '&select=id,cardmarket');
         const c = j && j.data && j.data[0];
-        if (c && c.cardmarket && c.cardmarket.prices) { pr = prFromPkm(c.cardmarket.prices, c.cardmarket.updatedAt); viaRespaldo++; }
+        if (c && c.cardmarket && c.cardmarket.prices) { pr = prFromPkm(c.cardmarket.prices, c.cardmarket.updatedAt); viaFallback++; }
       } catch (e) {}
     }
-    if (!pr) sinPrecio.push(d.name + ' (' + w.id + ')');
+    if (!pr) noPrice.push(d.name + ' (' + w.id + ')');
 
     let unit = 0;
     if (pr) {
@@ -137,19 +139,19 @@ const pkmIdOf = (setId, num) => setId + '-' + (/^[0-9]+$/.test(String(num)) ? St
       (d.name + '                        ').slice(0, 24) +
       ((d.set.name || '') + ' ' + d.localId + '                        ').slice(0, 26) +
       (w.variant + '        ').slice(0, 9) + (w.cond + '   ').slice(0, 4) +
-      (unit ? eur(unit).padStart(11) : '  sin precio') +
-      (pr ? '  [' + (pr.src === 'tcgdex' ? 'TCGdex' : 'respaldo') + ']' : '')
+      (unit ? eur(unit).padStart(11) : '   no price') +
+      (pr ? '  [' + (pr.src === 'tcgdex' ? 'TCGdex' : 'fallback') + ']' : '')
     );
   }
 
-  const out = 'importar-' + new Date().toISOString().slice(0, 10) + '.json';
+  const out = 'import-' + new Date().toISOString().slice(0, 10) + '.json';
   fs.writeFileSync(out, JSON.stringify({ v: 3, items, wish: [], hist: [] }, null, 2));
 
   console.log('\n' + '─'.repeat(74));
-  console.log(items.length + ' entradas · ' + items.reduce((a, b) => a + b.qty, 0) + ' cartas · valor estimado ' + eur(total));
-  if (viaRespaldo) console.log(viaRespaldo + ' con precio traído de la fuente de respaldo');
-  if (sinPrecio.length) console.log('Sin precio en ninguna fuente: ' + sinPrecio.join(', '));
-  if (noEncontradas.length) console.log('No encontradas: ' + noEncontradas.join(', '));
-  console.log('Archivo generado: ' + out);
-  console.log('Impórtalo en la app: Ajustes → Importar JSON → «Aceptar» para fusionar.');
+  console.log(items.length + ' entries · ' + items.reduce((a, b) => a + b.qty, 0) + ' cards · estimated value ' + eur(total));
+  if (viaFallback) console.log(viaFallback + ' priced by the fallback source');
+  if (noPrice.length) console.log('No price in any source: ' + noPrice.join(', '));
+  if (notFound.length) console.log('Not found: ' + notFound.join(', '));
+  console.log('File written: ' + out);
+  console.log('Import it in the app: Settings → Import JSON → "OK" to merge.');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

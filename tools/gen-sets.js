@@ -1,5 +1,5 @@
-/* Genera el catálogo de expansiones incrustado en la app.
-   Se ejecuta a mano cuando salgan expansiones nuevas:  node gen-sets.js  */
+/* Generates the set catalog embedded in the app.
+   Run it by hand when new sets come out:  node gen-sets.js  (from this folder) */
 const fs = require('fs');
 const LANGS = ['es', 'en', 'ja'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -37,9 +37,9 @@ async function j(url, tries = 5) {
     }));
     rows.sort((a, b) => String(b[3]).localeCompare(String(a[3])));
     out[lang] = rows;
-    console.log('  ' + lang + ': ' + rows.length + ' expansiones            ');
+    console.log('  ' + lang + ': ' + rows.length + ' sets            ');
   }
   const js = 'const SETS_RAW = ' + JSON.stringify(out) + ';\n';
   fs.writeFileSync('sets-bundle.js', js);
-  console.log('sets-bundle.js escrito: ' + Math.round(js.length / 1024) + ' KB');
+  console.log('sets-bundle.js written: ' + Math.round(js.length / 1024) + ' KB');
 })().catch(e => { console.error('Error:', e.message); process.exit(1); });

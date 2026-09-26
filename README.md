@@ -8,19 +8,19 @@ The interface is in **English and Spanish**: pick one from the selector in the h
 
 ## How to use it
 
-Download `organizador-pokemon-tcg.html` and open it with a double click. No installation, no account.
+Download `index.html` and open it with a double click. No installation, no account.
 
 Your collection is stored in your browser (`localStorage`), not on any server. To avoid losing it, export it now and then from **Settings → Export JSON**.
 
 ### Importing a card list
 
-If you already have your collection written down, put it in a text file following the format of `cartas.txt` (one card per line) and convert it:
+If you already have your collection written down, put it in a text file following the format of `cards.txt` (one card per line) and convert it:
 
 ```
-node construir-importacion.js cartas.txt
+node import-list.js cards.txt
 ```
 
-Load the resulting JSON from **Settings → Import JSON**. This tool and its template are in Spanish for now; the values themselves (`es`/`en`/`ja`, `holo`, `NM`…) are the same in any language.
+Load the resulting JSON from **Settings → Import JSON**.
 
 ### Local server (optional)
 
@@ -34,20 +34,18 @@ Serves the app at `http://localhost:8731`.
 
 The app is a single HTML file with the code and several dictionaries embedded in it. **Don't edit the `<script>` block of the HTML by hand**:
 
-1. Edit `herramientas/newscript.js`.
-2. Run `node herramientas/splice.js`, which rebuilds the `<script>` from the code and the dictionaries.
+1. Edit `tools/app.js`.
+2. Run `node tools/build.js`, which rebuilds the `<script>` from the code and the dictionaries.
 
-Interface text lives in `herramientas/textos.js`, in Spanish and English. The code asks for it with `t('key')`, and the HTML with `data-i18n="key"` (or `data-i18n-ph` for placeholders). `splice.js` refuses to build the app if a language is missing a key, or if a key is used that doesn't exist.
+Interface text lives in `tools/strings.js`, in Spanish and English. The code asks for it with `t('key')`, and the HTML with `data-i18n="key"` (or `data-i18n-ph` for placeholders). `build.js` refuses to build the app if a language is missing a key, or if a key is used that doesn't exist.
 
-The dictionaries (set catalog, Latin↔katakana Pokémon names, Cardmarket codes) are regenerated with the `gen-*.js` scripts in `herramientas/`, run from that folder.
-
-Code comments are in Spanish.
+The dictionaries (set catalog, Latin↔katakana Pokémon names, Cardmarket codes) are regenerated with the `gen-*.js` scripts in `tools/`, run from that folder.
 
 ## Where the data comes from
 
 - **[TCGdex](https://tcgdex.dev)** (MIT license): card catalog in Spanish, English and Japanese, and Cardmarket prices.
 - **[Pokémon TCG API](https://pokemontcg.io)**: fallback for the sets TCGdex has no prices for.
-- **[PokéAPI](https://pokeapi.co)**: Pokémon names in Japanese and Latin script (`herramientas/names.csv`).
+- **[PokéAPI](https://pokeapi.co)**: Pokémon names in Japanese and Latin script (`tools/names.csv`).
 
 Prices are Cardmarket's, updated once a day.
 

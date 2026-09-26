@@ -1,0 +1,14 @@
+# List of cards to import into the app.
+# One card per line. Only the id is required.
+#
+#   catalog:id | quantity | variant | condition | language | paid | notes
+#
+#   catalog:   es | en | ja        (es by default)
+#   variant:   normal | holo | reverse | 1st | promo
+#   condition: M | NM | EX | GD | LP | PL | PO   (NM by default)
+#
+# Then:  node import-list.js cards.txt
+# and import the resulting JSON from Settings → Import JSON.
+
+ja:M6-084 | 1 | holo | NM | JP
+es:xy5-84 | 2 | normal | NM | ES

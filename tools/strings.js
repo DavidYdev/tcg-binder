@@ -1,13 +1,13 @@
-/* Textos de la interfaz, en español y en inglés.
-   Cada entrada es un texto, una función (para plurales y huecos) o un
-   objeto de etiquetas. Pueden llevar HTML: son nuestros, no vienen de
-   fuera. Las funciones usan plu(), que está en newscript.js.
-   splice.js se niega a montar la app si a un idioma le falta una clave
-   que tiene el otro, o si el código pide una que no existe. */
-const TEXTOS = {
+/* Interface strings, in Spanish and English.
+   Each entry is a string, a function (for plurals and placeholders) or an
+   object of labels. They may contain HTML: they are ours, they don't come
+   from outside. The functions use plu(), which lives in app.js.
+   build.js refuses to build the app if one language is missing a key the
+   other has, or if the code asks for one that doesn't exist. */
+const STRINGS = {
 
 es: {
-  /* formato */
+  /* format */
   'locale': 'es-ES',
   'cm.lang': 'es',
   'date': (y, m, d) => d + '/' + m + '/' + y,
@@ -17,7 +17,7 @@ es: {
   'csv.dec': ',',
   'ui.lang': 'Idioma de la interfaz',
 
-  /* cabecera y pestañas */
+  /* header and tabs */
   'app.title': 'Mi Colección Pokémon TCG',
   'hdr.cards': 'cartas',
   'hdr.value': 'valor est.',
@@ -29,7 +29,7 @@ es: {
   'tab.stats': '📊 Estadísticas',
   'tab.settings': '⚙️ Ajustes',
 
-  /* etiquetas de catálogo, variante, referencia de precio y tabla */
+  /* catalog, variant, price reference and table labels */
   'cats': { es: 'Español', en: 'English', ja: '日本語 (japonés)' },
   'vars': { normal: 'Normal', holo: 'Holo', reverse: 'Reverse Holo', '1st': '1ª Edición', promo: 'Promo' },
   'modes': { trend: 'Tendencia', avg: 'Media de venta', avg30: 'Media 30 días', avg7: 'Media 7 días', low: 'Más bajo' },
@@ -37,7 +37,7 @@ es: {
           qty: 'Cant.', unit: 'Ud.', total: 'Total', paid: 'Compra', src: 'Fuente' },
   'lang.other': 'Otro',
 
-  /* piezas comunes */
+  /* shared bits */
   'all.f': 'Todas',
   'all.m': 'Todos',
   'clear': 'Limpiar',
@@ -74,14 +74,14 @@ es: {
   'tile.invested': 'Invertido',
   'tile.gain': 'Ganancia / pérdida',
 
-  /* errores de red y de guardado */
+  /* network and storage errors */
   'err.full': 'No se pudo guardar: almacenamiento lleno. Exporta una copia.',
   'err.429': 'Demasiadas consultas seguidas. Espera un minuto.',
   'err.busy': s => 'El servidor está ocupado (' + s + ')',
   'err.http': s => 'Error ' + s,
   'err.offline': 'Sin conexión',
 
-  /* mi colección */
+  /* my collection */
   'col.search': 'Buscar en mi colección',
   'col.search.ph': 'Nombre, set, número, nota...',
   'col.allSets': 'Todas las expansiones',
@@ -120,7 +120,7 @@ es: {
   'col.deleted': 'Carta eliminada',
   'col.delFail': 'No se pudo eliminar',
 
-  /* buscar y añadir */
+  /* search and add */
   'search.title': 'Buscar cartas',
   'search.sub': 'Busca en el catálogo y añade las cartas a tu colección con un clic.',
   'search.name': 'Nombre de la carta',
@@ -164,7 +164,7 @@ es: {
   'card.notFound': 'No se encontró la carta',
   'card.loadFail': m => 'No se pudo cargar la carta: ' + m,
 
-  /* campo de imagen */
+  /* image field */
   'img.label': 'Imagen de la carta',
   'img.useMine': '📷 Usar mi foto',
   'img.url.ph': '…o pega el enlace directo a una imagen',
@@ -185,7 +185,7 @@ es: {
   'img.html': 'Es una página web guardada, no una imagen: lo que descargaste de Drive fue la página, no el archivo. En Drive, pulsa los tres puntos y elige <b>Descargar</b>.',
   'img.other': 'Prueba a abrirlo con Fotos de Windows y guardarlo como JPG o PNG.',
 
-  /* ficha de añadir / editar */
+  /* add / edit dialog */
   'm.edit': 'Editar carta',
   'm.add': 'Añadir a mi colección',
   'm.paid': 'Precio que pagaste (€/ud)',
@@ -209,7 +209,7 @@ es: {
   'pb.reverse': 'Reverse (tendencia)',
   'pb.via': (src, d) => 'Cardmarket vía ' + src + ' · ' + d,
 
-  /* alta manual */
+  /* manual entry */
   'x.title': 'Añadir una carta a mano',
   'x.note': 'Para lo que ninguna fuente tenga catalogado: promos raras, cartas de otros idiomas o expansiones recién salidas. Lo único imprescindible es el nombre.',
   'x.name': 'Nombre *',
@@ -219,7 +219,7 @@ es: {
   'x.needName': 'Ponle al menos un nombre',
   'x.added': name => '«' + name + '» añadida a mano',
 
-  /* lista de deseos */
+  /* wishlist */
   'wish.title': 'Lista de deseos',
   'wish.sub': 'Cartas que quieres conseguir. Sus precios también se actualizan, para saber cuándo es buen momento de comprar.',
   'wish.dup': 'Ya está en tu lista de deseos',
@@ -233,7 +233,7 @@ es: {
   'wish.empty2': 'Usa el botón ⭐ en los resultados de búsqueda.',
   'wish.got': '✓ La tengo',
 
-  /* explorar expansiones */
+  /* browse sets */
   'sets.title': 'Explorar una expansión completa',
   'sets.sub': 'Ideal para ir marcando las cartas que ya tienes de una expansión concreta y ver cuánto te falta para completarla.',
   'sets.load': 'Cargar expansión',
@@ -251,7 +251,7 @@ es: {
   'sets.onAdd': 'al añadir',
   'sets.nothing': 'Nada que mostrar con ese filtro.',
 
-  /* actualizar precios */
+  /* update prices */
   'upd.progress': p => '⟳ Actualizando ' + p + '%',
   'upd.fallback': p => '⟳ Respaldo ' + p + '%',
   'upd.onlyManual': 'Solo tienes cartas añadidas a mano: esas las pones tú.',
@@ -264,7 +264,7 @@ es: {
   'upd.netErr': n => plu(n, 'fallo de red', 'fallos de red'),
   'tip.update': 'Consejo: pulsa «Actualizar precios» para traer los valores de hoy',
 
-  /* estadísticas */
+  /* statistics */
   'st.hist': 'Evolución del valor',
   'st.hist.sub': 'Se guarda una instantánea cada vez que actualizas los precios.',
   'st.top': 'Top 15 cartas más valiosas',
@@ -285,7 +285,7 @@ es: {
   'st.noCards': 'Sin cartas todavía.',
   'st.noData': 'Sin datos.',
 
-  /* ajustes */
+  /* settings */
   'set.backup': 'Copias de seguridad',
   'set.backup.sub': 'Tu colección se guarda en este navegador. <b>Exporta un JSON de vez en cuando</b> para no perderla nunca.',
   'set.exportJson': '⬇ Exportar JSON (copia completa)',

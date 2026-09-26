@@ -8,16 +8,16 @@ La interfaz está en **español e inglés**: se elige en el selector de la cabec
 
 ## Cómo usarlo
 
-Descarga `organizador-pokemon-tcg.html` y ábrelo con doble clic. No necesita instalación ni cuenta.
+Descarga `index.html` y ábrelo con doble clic. No necesita instalación ni cuenta.
 
 Tu colección se guarda en el navegador (`localStorage`), no en ningún servidor. Para no perderla, expórtala de vez en cuando desde **Ajustes → Exportar JSON**.
 
 ### Importar una lista de cartas
 
-Si ya tienes la colección apuntada, escríbela en un archivo de texto con el formato de `cartas.txt` (una carta por línea) y conviértela:
+Si ya tienes la colección apuntada, escríbela en un archivo de texto con el formato de `cards.txt` (una carta por línea) y conviértela:
 
 ```
-node construir-importacion.js cartas.txt
+node import-list.js cards.txt
 ```
 
 El JSON resultante se carga desde **Ajustes → Importar JSON**.
@@ -34,18 +34,18 @@ Sirve la app en `http://localhost:8731`.
 
 La app es un único HTML con el código y varios diccionarios incrustados. **No edites el bloque `<script>` del HTML a mano**:
 
-1. Edita `herramientas/newscript.js`.
-2. Ejecuta `node herramientas/splice.js`, que vuelve a montar el `<script>` con el código y los diccionarios.
+1. Edita `tools/app.js`.
+2. Ejecuta `node tools/build.js`, que vuelve a montar el `<script>` con el código y los diccionarios.
 
-Los textos de la interfaz viven en `herramientas/textos.js`, en español y en inglés. En el código se piden con `t('clave')`, y en el HTML con `data-i18n="clave"` (o `data-i18n-ph` para los placeholder). `splice.js` no monta la app si a un idioma le falta una clave o si se usa una que no existe.
+Los textos de la interfaz viven en `tools/strings.js`, en español y en inglés. En el código se piden con `t('clave')`, y en el HTML con `data-i18n="clave"` (o `data-i18n-ph` para los placeholder). `build.js` no monta la app si a un idioma le falta una clave o si se usa una que no existe.
 
-Los diccionarios (catálogo de expansiones, nombres latino↔katakana, códigos de Cardmarket) se regeneran con los `gen-*.js` de `herramientas/`, ejecutados desde esa carpeta.
+Los diccionarios (catálogo de expansiones, nombres latino↔katakana, códigos de Cardmarket) se regeneran con los `gen-*.js` de `tools/`, ejecutados desde esa carpeta.
 
 ## De dónde salen los datos
 
 - **[TCGdex](https://tcgdex.dev)** (licencia MIT): catálogo de cartas en es/en/ja y precios de Cardmarket.
 - **[Pokémon TCG API](https://pokemontcg.io)**: respaldo para las expansiones a las que TCGdex no pone precio.
-- **[PokéAPI](https://pokeapi.co)**: nombres de los Pokémon en japonés y alfabeto latino (`herramientas/names.csv`).
+- **[PokéAPI](https://pokeapi.co)**: nombres de los Pokémon en japonés y alfabeto latino (`tools/names.csv`).
 
 Los precios son los de Cardmarket, que se actualizan una vez al día.
 

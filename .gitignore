@@ -5,12 +5,12 @@
 !/README.md
 !/README.es.md
 !/LICENSE
-!/organizador-pokemon-tcg.html
-!/construir-importacion.js
+!/index.html
+!/import-list.js
 !/server.js
-!/cartas.txt
+!/cards.txt
 
-!/herramientas/
-/herramientas/*
-!/herramientas/*.js
-!/herramientas/names.csv
+!/tools/
+/tools/*
+!/tools/*.js
+!/tools/names.csv
