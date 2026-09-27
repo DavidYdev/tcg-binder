@@ -210,6 +210,11 @@ const manualPrice = it => {
   const n = Number(it.mp);
   return isNaN(n) ? null : n;
 };
+/* A graded card (PSA 10, CGC 9.5...) keeps the raw card's price: Cardmarket
+   publishes a single price per card, and slabs are listed as ordinary
+   offers of that same card, with the grade in the seller's comment. The
+   edit dialog says so; for the slab's real value, set your own price. */
+const isGraded = it => !!String(it.grade || '').trim();
 const hasAutoPrice = it => !it.manual && basePrice(it.pr, it.variant) > 0;
 
 function unitPrice(it) {
@@ -521,7 +526,7 @@ function renderCollection() {
   if (viewMode === 'grid') {
     out.innerHTML = head + '<div class="grid">' + list.map(i => cardHTML(i, {
       qty: i.qty, variant: i.variant,
-      sub: i.cond + ' · ' + langName(i.lang) + (i.manual ? ' · ' + t('manual.short') : ''),
+      sub: (isGraded(i) ? i.grade : i.cond) + ' · ' + langName(i.lang) + (i.manual ? ' · ' + t('manual.short') : ''),
       priceText: (unitPrice(i) ? eur(unitPrice(i)) + ' <small>' + t('unit') + ' · ' + eur(lineTotal(i)) + ' ' + t('total') + '</small>' : '<small style="color:var(--tx3)">' + t('no.price') + '</small>'),
       /* The Cardmarket shortcut is on every card; highlighted on the ones with
          no price, which are the ones to sort out by hand. */
@@ -542,7 +547,7 @@ function renderCollection() {
         '<td style="color:var(--tx2)">' + esc(i.number) + '</td>' +
         '<td style="color:var(--tx2)">' + esc(i.rarity) + '</td>' +
         '<td><span class="chip">' + esc(varName(i.variant)) + '</span></td>' +
-        '<td><span class="chip">' + esc(i.cond) + '</span></td>' +
+        '<td><span class="chip">' + esc(isGraded(i) ? i.grade : i.cond) + '</span></td>' +
         '<td style="color:var(--tx2)">' + esc(langName(i.lang)) + '</td>' +
         '<td class="num"><b>' + (i.qty || 1) + '</b></td>' +
         '<td class="num">' + eur(unitPrice(i)) + '</td>' +
@@ -780,7 +785,8 @@ function openModal(existing, card) {
     const tmp = Object.assign({}, base, {
       variant: $('#mVar').value, cond: $('#mCond').value,
       qty: Math.max(1, parseInt($('#mQty').value, 10) || 1),
-      mp: $('#mMp') ? $('#mMp').value : base.mp
+      mp: $('#mMp') ? $('#mMp').value : base.mp,
+      grade: $('#mGrade').value
     });
     const u = unitPrice(tmp);
     const pm = manualPrice(tmp);
@@ -788,9 +794,10 @@ function openModal(existing, card) {
     $('#mPrev').innerHTML = t('m.prev', eur(u), eur(u * tmp.qty)) +
       (base.manual || ownPriceWins
         ? ' <span style="color:var(--tx3)">' + t('m.prevMine') + '</span>'
-        : (S.cfg.useCond ? ' <span style="color:var(--tx3)">' + t('m.prevCond', S.cfg.cond[tmp.cond] == null ? 1 : S.cfg.cond[tmp.cond]) + '</span>' : ''));
+        : (S.cfg.useCond ? ' <span style="color:var(--tx3)">' + t('m.prevCond', S.cfg.cond[tmp.cond] == null ? 1 : S.cfg.cond[tmp.cond]) + '</span>' : '') +
+          (isGraded(tmp) ? ' <span style="color:var(--tx3)">' + t('m.prevRaw') + '</span>' : ''));
   };
-  ['mVar','mCond','mQty','mMp'].forEach(id => { const el = $('#' + id); if (el) el.addEventListener('input', upd); });
+  ['mVar','mCond','mQty','mMp','mGrade'].forEach(id => { const el = $('#' + id); if (el) el.addEventListener('input', upd); });
   upd();
 
   const imageField = imageFieldWire('mI', base.img, saveLabel);
@@ -1421,17 +1428,23 @@ $('#fileImport').onchange = e => {
       const mode = S.items.length
         ? (confirm(t('imp.confirm', S.items.length)) ? 'merge' : 'replace')
         : 'replace';
+      let already = 0;
       if (mode === 'replace') { S.items = incoming.items; S.wish = incoming.wish; S.hist = o.hist || []; }
       else {
+        /* An entry that's already here (same uid: the same backup imported
+           twice, or one taken from this collection) is skipped, so a merge
+           never doubles anything. A new entry of a card you already have
+           adds its copies to it. */
         incoming.items.forEach(newItem => {
-          const d = S.items.find(x => x.id === newItem.id && x.variant === newItem.variant && x.cond === newItem.cond && x.lang === newItem.lang);
+          if (S.items.some(x => x.uid === newItem.uid)) { already++; return; }
+          const d = S.items.find(x => x.id === newItem.id && x.variant === newItem.variant && x.cond === newItem.cond && x.lang === newItem.lang && (x.grade || '') === (newItem.grade || ''));
           if (d) d.qty = (d.qty || 1) + (newItem.qty || 1);
           else S.items.push(Object.assign({}, newItem, { uid: uid() }));
         });
         incoming.wish.forEach(w => { if (!S.wish.some(x => x.id === w.id)) S.wish.push(Object.assign({}, w, { uid: uid() })); });
       }
       save(); syncSettingsUI(); renderCollection(); renderWish(); renderStats();
-      toast(t('imp.done', incoming.items.length), 'ok');
+      toast(t('imp.done', incoming.items.length - already, already), 'ok');
     } catch (err) { toast(t('imp.fail', err.message), 'err'); }
     e.target.value = '';
   };

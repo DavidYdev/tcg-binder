@@ -200,6 +200,7 @@ es: {
   'm.prev': (u, total) => '<b>Valor estimado:</b> ' + u + ' por unidad · <b>' + total + '</b> en total',
   'm.prevMine': '(precio puesto por ti: manda sobre el automático y no se actualiza solo)',
   'm.prevCond': k => '(incluye el ajuste por estado ×' + k + ')',
+  'm.prevRaw': '· es el precio de la carta sin gradear: Cardmarket no publica el de las gradeadas',
   'm.saved': 'Cambios guardados',
   'm.dup': n => 'Ya la tenías: ahora tienes ' + n,
   'm.added': name => '«' + name + '» añadida a tu colección',
@@ -322,8 +323,11 @@ es: {
   'exp.json': 'Copia de seguridad descargada',
   'exp.csv': 'CSV descargado (ábrelo con Excel)',
   'imp.bad': 'El archivo no tiene el formato esperado',
-  'imp.confirm': n => 'Ya tienes ' + plu(n, 'entrada', 'entradas') + '.\n\nAceptar = FUSIONAR con lo importado\nCancelar = REEMPLAZAR todo por el archivo',
-  'imp.done': n => 'Importadas ' + plu(n, 'entrada', 'entradas'),
+  'imp.confirm': n => 'Ya tienes ' + plu(n, 'entrada', 'entradas') + '.\n\n' +
+    'Aceptar = FUSIONAR: añade lo que no tengas (lo que ya está no se duplica)\n' +
+    'Cancelar = REEMPLAZAR todo por el archivo (para restaurar una copia)',
+  'imp.done': (n, already) => 'Importadas ' + plu(n, 'entrada', 'entradas') +
+    (already ? ' · ' + plu(already, 'ya estaba', 'ya estaban') + ' y no se ha' + (already === 1 ? '' : 'n') + ' duplicado' : ''),
   'imp.fail': m => 'No se pudo importar: ' + m,
   'wipe.c1': 'Se borrará TODA tu colección de este navegador. ¿Seguro?',
   'wipe.c2': 'Última confirmación: ¿has exportado una copia? Esto no se puede deshacer.',
@@ -535,6 +539,7 @@ en: {
   'm.prev': (u, total) => '<b>Estimated value:</b> ' + u + ' each · <b>' + total + '</b> in total',
   'm.prevMine': '(price set by you: it overrides the automatic one and doesn’t update by itself)',
   'm.prevCond': k => '(includes the condition adjustment ×' + k + ')',
+  'm.prevRaw': '· that’s the ungraded card’s price: Cardmarket doesn’t publish graded ones',
   'm.saved': 'Changes saved',
   'm.dup': n => 'You already had it: now you have ' + n,
   'm.added': name => '“' + name + '” added to your collection',
@@ -657,8 +662,11 @@ en: {
   'exp.json': 'Backup downloaded',
   'exp.csv': 'CSV downloaded (open it with Excel)',
   'imp.bad': 'The file isn’t in the expected format',
-  'imp.confirm': n => 'You already have ' + plu(n, 'entry', 'entries') + '.\n\nOK = MERGE with the imported file\nCancel = REPLACE everything with the file',
-  'imp.done': n => 'Imported ' + plu(n, 'entry', 'entries'),
+  'imp.confirm': n => 'You already have ' + plu(n, 'entry', 'entries') + '.\n\n' +
+    'OK = MERGE: adds what you don’t have (what’s already here isn’t duplicated)\n' +
+    'Cancel = REPLACE everything with the file (to restore a backup)',
+  'imp.done': (n, already) => 'Imported ' + plu(n, 'entry', 'entries') +
+    (already ? ' · ' + already + ' already here, not duplicated' : ''),
   'imp.fail': m => 'Import failed: ' + m,
   'wipe.c1': 'This will delete your WHOLE collection from this browser. Are you sure?',
   'wipe.c2': 'Last confirmation: have you exported a backup? This can’t be undone.',
